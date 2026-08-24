@@ -79,7 +79,7 @@
     <div id="negeriCard" style="background:#fff;border-radius:14px;padding:24px 28px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
         <div>
-          <h3 style="font-size:16px;color:#64748b;font-weight:600">🏆 Pencapaian Negeri — <span id="negBulan"></span></h3>
+          <h3 style="font-size:16px;color:#64748b;font-weight:600">🏆 <span id="negBulan"></span></h3>
           <p style="font-size:13px;color:#94a3b8;margin-top:2px" id="negMetrik"></p>
         </div>
         <div style="text-align:right">
@@ -290,33 +290,38 @@ function renderTable(){
   }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">Tiada data.</td></tr>';
 }
 
-// ---------- Pencapaian Negeri (#3): jumlah N semua ÷ jumlah D, ikut bulan terkini ----------
+// ---------- Pencapaian Negeri (#3): jumlah N semua ÷ jumlah D ----------
+// KPI: hanya hospital/PKD yang mengisi (bukan KK). SMRP: semua fasiliti.
 function renderNegeri(){
   const card = $('negeriCard');
   const mv = metricValue();
   const isKPI = mv.startsWith('kpi');
   const target = isKPI ? TARGET_KPI : null;
+  const katFilter = $('fKat').value;
 
-  // Ikut filter tahun & kategori; guna bulan terkini kecuali user pilih bulan tertentu
-  let pool = filtered();
-  const yr = $('fYear').value;
-  if(yr) pool = pool.filter(d=>String(d.year)===yr);
-  if(!pool.length){ card.style.display='none'; return; }
-
-  let monthKeyUse;
-  const moFilter = $('fMonth').value;
-  if(moFilter){
-    monthKeyUse = Math.max(...pool.filter(d=>String(d.month)===moFilter).map(mkey), NaN);
-    if(isNaN(monthKeyUse)){ card.style.display='none'; return; }
+  // Senarai fasiliti ikut metrik: KPI = hospital sahaja, SMRP = semua
+  let facilities;
+  if(isKPI){
+    facilities = (katFilter === 'hospital') ? HOSPITALS : HOSPITALS;
+    // KPI tidak dilaporkan oleh KK — kecualikan KK sentiasa
   } else {
-    monthKeyUse = Math.max(...pool.map(mkey));
+    if(katFilter === 'kk') facilities = KK;
+    else if(katFilter === 'hospital') facilities = HOSPITALS;
+    else facilities = [...HOSPITALS, ...KK];
   }
-  const recs = pool.filter(d=>mkey(d)===monthKeyUse);
-  const y = Math.floor(monthKeyUse/100), m = monthKeyUse%100;
 
-  // Jumlah N & D dari subkategori (bukan purata rate!)
+  const yr = $('fYear').value || Math.max(...allData.map(d=>d.year));
+  $('negBulan').textContent = 'Pencapaian ' + (isKPI?'KPI':'SMRP') + ' Negeri ' + yr;
+
+  // Bulan: ikut pilihan user, jika tiada guna bulan terkini fasiliti berkenaan
+  let pool = allData.filter(d => String(d.year)===String(yr) && facilities.includes(d.hospital));
+  if(!pool.length){ card.style.display='none'; return; }
+  const moFilter = $('fMonth').value;
+  const monthUse = moFilter ? parseInt(moFilter) : Math.max(...pool.map(d=>d.month));
+
+  // Jumlah N & D dari subkategori bagi bulan terpilih
   let totN=0, totD=0, count=0;
-  recs.forEach(r=>{
+  pool.filter(d=>d.month===monthUse).forEach(r=>{
     const e = getEntry(r, mv);
     if(!e) return;
     const n=parseFloat(e.numerator), d=parseFloat(e.denominator);
@@ -324,8 +329,8 @@ function renderNegeri(){
     totN+=n; totD+=d; count++;
   });
 
-  $('negBulan').textContent = BULAN_PENUH[m-1]+' '+y;
-  $('negMetrik').textContent = getMetricLabel(mv);
+  $('negMetrik').textContent = getMetricLabel(mv) + ' · ' +
+    (isKPI ? facilities.length + ' hospital/PKD' : facilities.length + ' fasiliti');
 
   if(totD===0){ card.style.display='none'; return; }
   const rate = totN/totD*100;
@@ -343,9 +348,8 @@ function renderNegeri(){
   $('negBar').style.width = Math.min(rate,100)+'%';
   $('negBar').style.background = color;
 
-  const fasCount = new Set(recs.map(d=>d.hospital)).size;
   $('negDetail').textContent =
-    'Dikira dari '+count+' rekod ('+fasCount+' fasiliti) · Jumlah N='+totN.toLocaleString()+' · Jumlah D='+totD.toLocaleString();
+    'Bulan '+BULAN_PENUH[monthUse-1]+' '+yr+' · '+count+' dari '+facilities.length+' fasiliti menghantar · Jumlah N='+totN.toLocaleString()+' · Jumlah D='+totD.toLocaleString();
 
   card.style.display='block';
 }
