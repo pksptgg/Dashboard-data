@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — PKSP Negeri Terengganu</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:#f1f5f9; color:#0f172a; line-height:1.6; }
+    .topbar { background:#0f172a; color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:50; }
+    .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color:#fff; }
+    .brand-badge { background:linear-gradient(135deg,#2563eb,#7c3aed); font-weight:800; font-size:14px; padding:6px 10px; border-radius:8px; }
+    .brand strong { font-size:15px; display:block; line-height:1.2; }
+    .brand small { font-size:11px; color:#94a3b8; }
+    .nav { display:flex; gap:4px; }
+    .nav a { color:#cbd5e1; text-decoration:none; padding:8px 14px; border-radius:8px; font-size:14px; }
+    .nav a:hover, .nav a.active { background:rgba(255,255,255,.08); color:#fff; }
+    .container { max-width:1200px; margin:0 auto; padding:24px 20px; }
+    h1 { font-size:26px; } .sub { color:#64748b; margin-bottom:20px; }
+    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px; }
+    .stat { background:#fff; border-radius:12px; padding:18px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+    .stat-num { font-size:28px; font-weight:800; display:block; color:#2563eb; }
+    .stat-label { font-size:13px; color:#64748b; }
+    .pending { background:#fff; border-radius:12px; padding:20px; margin-bottom:24px; box-shadow:0 1px 4px rgba(0,0,0,.08); display:none; }
+    .badge { display:inline-block; padding:5px 12px; border-radius:999px; font-size:13px; margin:3px; }
+    .badge-bad { background:#fee2e2; color:#991b1b; } .badge-good { background:#dcfce7; color:#166534; }
+    .filters { background:#fff; border-radius:12px; padding:16px 20px; margin-bottom:24px; box-shadow:0 1px 4px rgba(0,0,0,.08); display:flex; gap:14px; flex-wrap:wrap; }
+    .field { flex:1; min-width:140px; }
+    label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; }
+    select { width:100%; padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; }
+    .charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:20px; margin-bottom:24px; }
+    @media(max-width:900px){ .charts{grid-template-columns:1fr} }
+    .chart-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+    .chart-card h3 { margin-bottom:4px; } .muted { color:#94a3b8; font-size:13px; }
+    .chart-wrap { position:relative; height:320px; margin-top:12px; }
+    .table-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:24px; overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:14px; min-width:700px; }
+    th { text-align:left; padding:10px 12px; background:#f1f5f9; font-size:13px; white-space:nowrap; }
+    td { padding:9px 12px; border-bottom:1px solid #f1f5f9; }
+    tr:hover td { background:#f8fafc; }
+    .rate-good { background:#dcfce7!important; color:#166534; font-weight:600; }
+    .rate-warn { background:#fef9c3!important; color:#854d0e; font-weight:600; }
+    .rate-bad { background:#fee2e2!important; color:#991b1b; font-weight:600; }
+    footer { text-align:center; padding:24px; color:#94a3b8; font-size:13px; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span class="brand-badge">PKSP</span>
+      <span><strong>Dashboard Data PKSP — Negeri Terengganu</strong><small>Program Kualiti &amp; Data Pesakit</small></span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">Utama</a>
+      <a href="borang.html">Isi Data</a>
+      <a href="dashboard.html" class="active">Dashboard</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>📊 Dashboard KPI &amp; SMRP</h1>
+    <p class="sub">Prestasi semua hospital &amp; klinik kesihatan. Rate = N/D × 100%. Data langsung dari cloud.</p>
+
+    <div class="stats">
+      <div class="stat"><span class="stat-num" id="stTotal">–</span><span class="stat-label">Jumlah Penghantaran</span></div>
+      <div class="stat"><span class="stat-num" id="stFas">–</span><span class="stat-label">Fasiliti Menghantar</span></div>
+      <div class="stat"><span class="stat-num" id="stBulan">–</span><span class="stat-label">Bulan Diliputi</span></div>
+      <div class="stat"><span class="stat-num" id="stKemaskini">–</span><span class="stat-label">Kemas Kini Terakhir</span></div>
+    </div>
+
+    <div class="pending" id="pendingCard">
+      <h3 style="margin-bottom:6px">⏳ Belum Hantar — <span id="pendingLabel"></span></h3>
+      <div id="pendingList"></div>
+    </div>
+
+    <div class="filters">
+      <div class="field"><label>Kategori</label>
+        <select id="fKat"><option value="">Semua</option><option value="hospital">Hospital</option><option value="kk">Klinik Kesihatan</option></select></div>
+      <div class="field"><label>Bulan</label>
+        <select id="fMonth"><option value="">Semua</option></select></div>
+      <div class="field"><label>Tahun</label>
+        <select id="fYear"><option value="">Semua</option></select></div>
+      <div class="field"><label>Fasiliti</label>
+        <select id="fFas"><option value="">Semua</option></select></div>
+      <div class="field"><label>Metrik</label>
+        <select id="fMetric"></select></div>
+    </div>
+
+    <section class="charts">
+      <div class="chart-card"><h3>Trend Bulanan</h3><p class="muted" id="trendSub"></p><div class="chart-wrap"><canvas id="chTrend"></canvas></div></div>
+      <div class="chart-card"><h3>Perbandingan Fasiliti (Bulan Terkini)</h3><p class="muted" id="barSub"></p><div class="chart-wrap"><canvas id="chBar"></canvas></div></div>
+    </section>
+
+    <section class="charts">
+      <div class="chart-card" style="grid-column:1/-1"><h3>📈 Perbandingan Bulanan Sepanjang Tahun</h3><p class="muted" id="cmpSub">Warna ikut bulan.</p><div class="chart-wrap" style="height:380px"><canvas id="chCmp"></canvas></div></div>
+    </section>
+
+    <section class="table-card">
+      <h3>Jadual Data (2 bulan terkini)</h3>
+      <br>
+      <table>
+        <thead><tr>
+          <th>Fasiliti</th><th>Kategori</th><th>Bulan</th><th>Tahun</th><th id="thKpi">KPI 1 (N / D / Rate)</th><th>SMRP (N / D / Rate)</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>© 2026 PKSP Negeri Terengganu — Dibina untuk kegunaan dalaman.</footer>
+
+<script>
+const SUPABASE_URL = 'https://qclmomhiusxnushtegac.supabase.co';
+const SUPABASE_KEY = 'sb_publishable__6aMvgPPzo6ds2ucSuMl4A_6xH70Sd9';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
+const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"];
+const BULAN = ['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogo','Sep','Okt','Nov','Dis'];
+const BULAN_PENUH = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
+const COLORS = ['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#4f46e5','#ea580c','#0d9488','#b45309'];
+const TARGET_KPI = 98;
+
+let allData = [], chTrend, chBar, chCmp;
+const $ = id => document.getElementById(id);
+const mkey = d => d.year*100 + d.month;
+
+function rate(entry){
+  if(!entry) return null;
+  const n = parseFloat(entry.numerator), d = parseFloat(entry.denominator);
+  if(isNaN(n)||isNaN(d)||d===0) return null;
+  return n/d*100;
+}
+function getEntry(rec, metric){
+  const [type,id] = metric.split(':');
+  return rec[type] ? rec[type][id] : null;
+}
+
+function buildFilters(){
+  $('fMonth').innerHTML = '<option value="">Semua</option>' + BULAN_PENUH.map((b,i)=>`<option value="${i+1}">${b}</option>`).join('');
+  $('fMetric').innerHTML =
+    '<option value="kpi:kpi1">KPI: Masa Tindakbalas Awal Rujukan</option>' +
+    '<option value="smrp:smrp1">SMRP: Jumlah Kemasukan Data</option>';
+}
+function populateFas(){
+  const kat = $('fKat').value;
+  const list = kat==='kk' ? KK : kat==='hospital' ? HOSPITALS : [...HOSPITALS,...KK];
+  const cur = $('fFas').value;
+  $('fFas').innerHTML = '<option value="">Semua</option>'+list.map(f=>`<option>${f}</option>`).join('');
+  if(cur && list.includes(cur)) $('fFas').value = cur;
+}
+function filtered(){
+  const kat=$('fKat').value, mo=$('fMonth').value, yr=$('fYear').value, fas=$('fFas').value;
+  return allData.filter(d =>
+    (!kat || d.kategori===kat) && (!mo || String(d.month)===mo) &&
+    (!yr || String(d.year)===yr) && (!fas || d.hospital===fas));
+}
+function metricValue(){ return $('fMetric').value; }
+
+function renderStats(){
+  $('stTotal').textContent = allData.length;
+  $('stFas').textContent = new Set(allData.map(d=>d.hospital)).size + ' / ' + (HOSPITALS.length+KK.length);
+  $('stBulan').textContent = new Set(allData.map(mkey)).size;
+  const last = allData.map(d=>d.submitted_at||'').sort().pop();
+  $('stKemaskini').textContent = last ? new Date(last).toLocaleDateString('ms-MY',{day:'2-digit',month:'short'}) : '–';
+}
+
+function renderPending(){
+  let pool = allData;
+  const yr = $('fYear').value;
+  if(yr) pool = pool.filter(d=>String(d.year)===yr);
+  if(!pool.length){ $('pendingCard').style.display='none'; return; }
+  const latest = Math.max(...pool.map(mkey));
+  const y=Math.floor(latest/100), m=latest%100;
+  const kat = $('fKat').value;
+  const fasList = kat==='kk'?KK:kat==='hospital'?HOSPITALS:[...HOSPITALS,...KK];
+  const submitted = new Set(pool.filter(d=>mkey(d)===latest).map(d=>d.hospital));
+  const pending = fasList.filter(f=>!submitted.has(f));
+  $('pendingLabel').textContent = BULAN_PENUH[m-1]+' '+y;
+  $('pendingList').innerHTML = pending.length
+    ? pending.map(p=>`<span class="badge badge-bad">${p}</span>`).join('')
+    : '<span class="badge badge-good">✔ Semua fasiliti telah menghantar</span>';
+  $('pendingCard').style.display='block';
+}
+
+function renderTrend(){
+  const data = filtered(), mv = metricValue();
+  $('trendSub').textContent = getMetricLabel(mv);
+  const fas = [...new Set(data.map(d=>d.hospital))].sort();
+  const keys = [...new Set(data.map(mkey))].sort();
+  const datasets = fas.map((f,i)=>({
+    label:f,
+    data: keys.map(k=>{
+      const rec = data.find(d=>d.hospital===f && mkey(d)===k);
+      return rec ? rate(getEntry(rec,mv)) : null;
+    }),
+    borderColor:COLORS[i%COLORS.length], backgroundColor:COLORS[i%COLORS.length]+'33',
+    borderWidth:2, tension:.3, spanGaps:true, pointRadius:3
+  }));
+  datasets.push({label:'Sasaran ('+TARGET_KPI+'%)',data:keys.map(()=>TARGET_KPI),borderColor:'#f59e0b',borderDash:[6,4],pointRadius:0});
+  if(chTrend) chTrend.destroy();
+  chTrend = new Chart($('chTrend'),{type:'line',data:{labels:keys.map(k=>BULAN[k%100-1]+' '+String(Math.floor(k/100)).slice(2)),datasets},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:105}}}});
+}
+
+function getMetricLabel(mv){ return mv.startsWith('kpi') ? 'KPI 1 — Masa Tindakbalas Awal Rujukan (%)' : 'SMRP — Jumlah Kemasukan Data (%)'; }
+
+function renderBar(){
+  const data = filtered(), mv = metricValue();
+  const keys = [...new Set(data.map(mkey))].sort();
+  if(!keys.length){ $('barSub').textContent='Tiada data.'; if(chBar) chBar.destroy(); return; }
+  const latest = keys[keys.length-1], y=Math.floor(latest/100), m=latest%100;
+  $('barSub').textContent = BULAN_PENUH[m-1]+' '+y;
+  const recs = data.filter(d=>mkey(d)===latest);
+  const labels=[],values=[],colors=[];
+  recs.forEach(r=>{
+    const v=rate(getEntry(r,mv));
+    labels.push(r.hospital); values.push(v);
+    colors.push(v===null?'#cbd5e1':(mv.startsWith('kpi') ? (v>=98?'#16a34a':v>=93?'#d97706':'#dc2626') : '#2563eb'));
+  });
+  if(chBar) chBar.destroy();
+  chBar = new Chart($('chBar'),{type:'bar',data:{labels,datasets:[{label:getMetricLabel(mv),data:values,backgroundColor:colors,borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:105},x:{ticks:{maxRotation:60,minRotation:35,font:{size:10}}}}}});
+}
+
+function renderCompare(){
+  const data = filtered(), mv = metricValue();
+  const fas = [...new Set(data.map(d=>d.hospital))].sort();
+  const keys = [...new Set(data.map(mkey))].sort();
+  if(!fas.length || !keys.length){ if(chCmp) chCmp.destroy(); return; }
+  const datasets = keys.map((k,i)=>({
+    label:BULAN[k%100-1]+' '+String(Math.floor(k/100)).slice(2),
+    data:fas.map(f=>{const r=data.find(d=>d.hospital===f&&mkey(d)===k);return r?rate(getEntry(r,mv)):null;}),
+    backgroundColor:COLORS[i%COLORS.length], borderRadius:4
+  }));
+  $('cmpSub').textContent = keys.length+' bulan · warna ikut bulan';
+  if(chCmp) chCmp.destroy();
+  chCmp = new Chart($('chCmp'),{type:'bar',data:{labels:fas,datasets},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},
+    scales:{y:{beginAtZero:true,max:105},x:{ticks:{maxRotation:60,minRotation:35,font:{size:10}}}}}});
+}
+
+function renderTable(){
+  const kat = $('fKat').value, isKK = kat==='kk', mv = metricValue();
+  $('thKpi').style.display = isKK ? 'none':'';
+  const data = filtered().sort((a,b)=>mkey(b)-mkey(a)||a.hospital.localeCompare(b.hospital));
+  const months = [...new Set(data.map(mkey))].sort((a,b)=>b-a).slice(0,2);
+  const rows = data.filter(d=>months.includes(mkey(d)));
+  const fmt = e=>{
+    if(!e) return '–';
+    const r = rate(e);
+    return (e.numerator??'–')+' / '+(e.denominator??'–')+' / '+(r===null?'–':r.toFixed(2)+'%');
+  };
+  const cls = e=>{
+    const r = rate(e); if(r===null||!mv.startsWith('kpi')) return '';
+    return r>=98?'rate-good':r>=93?'rate-warn':'rate-bad';
+  };
+  $('tbody').innerHTML = rows.length ? rows.map(d=>{
+    const k=d.kpi?.kpi1, s=d.smrp?.smrp1;
+    return `<tr><td>${d.hospital}</td><td>${d.kategori==='kk'?'Klinik Kesihatan':'Hospital'}</td>`+
+      `<td>${BULAN_PENUH[d.month-1]}</td><td>${d.year}</td>`+
+      (isKK?'':`<td class="${cls(k)}">${fmt(k)}</td>`)+
+      `<td class="${cls(s)}">${fmt(s)}</td></tr>`;
+  }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">Tiada data.</td></tr>';
+}
+
+function renderAll(){ populateFas(); renderStats(); renderPending(); renderTrend(); renderBar(); renderCompare(); renderTable(); }
+
+async function init(){
+  buildFilters();
+  const { data, error } = await sb.from('submissions').select('*');
+  if(error){ document.body.insertAdjacentHTML('beforeend','<p style="color:red;text-align:center">Gagal muat data: '+error.message+'</p>'); return; }
+  allData = data;
+  [...new Set(data.map(d=>d.year))].sort().reverse().forEach(y=>{
+    $('fYear').insertAdjacentHTML('beforeend',`<option>${y}</option>`);
+  });
+  renderAll();
+  ['fKat','fMonth','fYear','fFas','fMetric'].forEach(id=>$(id).addEventListener('change',renderAll));
+
+  // Realtime: bila orang lain isi borang, terus refresh
+  sb.channel('submissions-live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'submissions'}, async ()=>{
+      const { data } = await sb.from('submissions').select('*');
+      allData = data; renderAll();
+    })
+    .subscribe();
+}
+init();
+</script>
+</body>
+</html>

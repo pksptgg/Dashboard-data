@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Isi Data — Dashboard PKSP</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:#f1f5f9; color:#0f172a; line-height:1.6; }
+    .topbar { background:#0f172a; color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:50; }
+    .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color:#fff; }
+    .brand-badge { background:linear-gradient(135deg,#2563eb,#7c3aed); font-weight:800; font-size:14px; padding:6px 10px; border-radius:8px; }
+    .brand strong { font-size:15px; display:block; line-height:1.2; }
+    .brand small { font-size:11px; color:#94a3b8; }
+    .nav { display:flex; gap:4px; }
+    .nav a { color:#cbd5e1; text-decoration:none; padding:8px 14px; border-radius:8px; font-size:14px; }
+    .nav a:hover, .nav a.active { background:rgba(255,255,255,.08); color:#fff; }
+    .container { max-width:760px; margin:0 auto; padding:24px 20px; }
+    h1 { font-size:26px; margin-bottom:6px; } .sub { color:#64748b; margin-bottom:24px; }
+    .card { background:#fff; border-radius:14px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:20px; }
+    label { display:block; font-weight:600; font-size:14px; margin-bottom:6px; }
+    select, input { width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:15px; margin-bottom:16px; background:#fff; }
+    select:focus, input:focus { outline:none; border-color:#2563eb; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }
+    .metric-box { border:1.5px solid #e2e8f0; border-radius:12px; padding:18px; margin-top:8px; }
+    .metric-box h3 { font-size:15px; margin-bottom:12px; color:#1e40af; }
+    .rate-display { font-size:22px; font-weight:800; color:#166534; margin-top:4px; }
+    .btn { display:inline-block; padding:13px 26px; border-radius:10px; font-weight:600; font-size:15px; cursor:pointer; border:none; background:#2563eb; color:#fff; width:100%; }
+    .btn:hover { background:#1d4ed8; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    #msg { padding:14px 18px; border-radius:10px; margin-bottom:20px; display:none; font-weight:500; }
+    .ok { background:#dcfce7; color:#166534; } .err { background:#fee2e2; color:#991b1b; }
+    footer { text-align:center; padding:24px; color:#94a3b8; font-size:13px; }
+    @media(max-width:600px){ .grid2{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span class="brand-badge">PKSP</span>
+      <span><strong>Dashboard Data PKSP — Negeri Terengganu</strong><small>Program Kualiti &amp; Data Pesakit</small></span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">Utama</a>
+      <a href="borang.html" class="active">Isi Data</a>
+      <a href="dashboard.html">Dashboard</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>📝 Isi Data Bulanan</h1>
+    <p class="sub">Pilih kategori &amp; fasiliti, kemudian isi N (numerator) dan D (denominator). Rate dikira automatik.</p>
+    <div id="msg"></div>
+
+    <div class="card">
+      <label for="kategori">Kategori</label>
+      <select id="kategori">
+        <option value="hospital">Hospital</option>
+        <option value="kk">Klinik Kesihatan</option>
+      </select>
+
+      <label for="fasiliti">Fasiliti</label>
+      <select id="fasiliti"></select>
+
+      <div class="grid2">
+        <div>
+          <label for="bulan">Bulan</label>
+          <select id="bulan"></select>
+        </div>
+        <div>
+          <label for="tahun">Tahun</label>
+          <input type="number" id="tahun" value="2026" min="2024" max="2035">
+        </div>
+      </div>
+
+      <!-- KPI section -->
+      <div class="metric-box" id="kpiBox">
+        <h3>KPI 1 — Masa Tindakbalas Awal Rujukan (≤2 hari bekerja) · Sasaran ≥98%</h3>
+        <div class="grid2">
+          <div><label>Numerator (N)</label><input type="number" id="kpiN" min="0" placeholder="cth. 14"></div>
+          <div><label>Denominator (D)</label><input type="number" id="kpiD" min="0" placeholder="cth. 14"></div>
+        </div>
+        <div>Rate KPI: <span class="rate-display" id="kpiRate">–</span></div>
+      </div>
+
+      <!-- SMRP section -->
+      <div class="metric-box" style="margin-top:16px">
+        <h3>SMRP — Jumlah Kemasukan Data SMRP KKM</h3>
+        <div class="grid2">
+          <div><label>Numerator (N)</label><input type="number" id="smrpN" min="0" placeholder="cth. 385"></div>
+          <div><label>Denominator (D)</label><input type="number" id="smrpD" min="0" placeholder="cth. 385"></div>
+        </div>
+        <div>Rate SMRP: <span class="rate-display" id="smrpRate">–</span></div>
+      </div>
+
+      <br>
+      <button class="btn" id="submitBtn" onclick="simpan()">💾 Simpan Data</button>
+      <p style="font-size:13px;color:#94a3b8;margin-top:12px;text-align:center">Isi semula bulan yang sama akan menggantikan data lama.</p>
+    </div>
+  </main>
+
+  <footer>© 2026 PKSP Negeri Terengganu</footer>
+
+<script>
+const SUPABASE_URL = 'https://qclmomhiusxnushtegac.supabase.co';
+const SUPABASE_KEY = 'sb_publishable__6aMvgPPzo6ds2ucSuMl4A_6xH70Sd9';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
+const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"];
+const BULAN = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
+
+const $ = id => document.getElementById(id);
+
+function populateFasiliti(){
+  const kat = $('kategori').value;
+  const list = kat === 'kk' ? KK : HOSPITALS;
+  $('fasiliti').innerHTML = '<option value="">-- Pilih --</option>' + list.map(f=>`<option>${f}</option>`).join('');
+  $('kpiBox').style.display = kat === 'kk' ? 'none' : '';
+}
+function rate(n,d){ n=parseFloat(n); d=parseFloat(d); if(isNaN(n)||isNaN(d)||d===0) return null; return (n/d*100); }
+function updateRate(prefix){
+  const r = rate($(prefix+'N').value, $(prefix+'D').value);
+  $(prefix+'Rate').textContent = r===null ? '–' : r.toFixed(2)+'%';
+}
+function showMsg(text, ok){
+  const m = $('msg'); m.textContent = text; m.className = ok?'ok':'err'; m.style.display='block';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+$('kategori').addEventListener('change', populateFasiliti);
+$('bulan').innerHTML = BULAN.map((b,i)=>`<option value="${i+1}">${b}</option>`).join('');
+$('bulan').value = new Date().getMonth()+1;
+['kpiN','kpiD'].forEach(id=>$(id).addEventListener('input',()=>updateRate('kpi')));
+['smrpN','smrpD'].forEach(id=>$(id).addEventListener('input',()=>updateRate('smrp')));
+populateFasiliti();
+
+async function simpan(){
+  const btn = $('submitBtn');
+  const fasiliti = $('fasiliti').value;
+  if(!fasiliti) return showMsg('⚠️ Sila pilih fasiliti.', false);
+  const kategori = $('kategori').value;
+  const month = parseInt($('bulan').value);
+  const year = parseInt($('tahun').value);
+  if(!year || year<2020) return showMsg('⚠️ Tahun tidak sah.', false);
+
+  const kpiEmpty = !$('kpiN').value && !$('kpiD').value;
+  const smrpEmpty = !$('smrpN').value && !$('smrpD').value;
+  if(kpiEmpty && smrpEmpty) return showMsg('⚠️ Isi sekurang-kurangnya satu metrik (KPI atau SMRP).', false);
+
+  const data = {};
+  if(!kpiEmpty) data.kpi = { kpi1: { numerator: parseFloat($('kpiN').value)||0, denominator: parseFloat($('kpiD').value)||0 } };
+  if(!smrpEmpty) data.smrp = { smrp1: { numerator: parseFloat($('smrpN').value)||0, denominator: parseFloat($('smrpD').value)||0 } };
+
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  try {
+    // upsert: ganti jika hospital+year+month sama
+    const { error } = await sb.from('submissions').upsert(
+      { hospital: fasiliti, kategori, year, month, data, submitted_at: new Date().toISOString() },
+      { onConflict: 'hospital,year,month' }
+    );
+    if(error) throw error;
+    showMsg('✅ Data '+fasiliti+' ('+BULAN[month-1]+' '+year+') berjaya disimpan!', true);
+    ['kpiN','kpiD','smrpN','smrpD'].forEach(id=>$(id).value='');
+    updateRate('kpi'); updateRate('smrp');
+  } catch(e){
+    showMsg('❌ Gagal simpan: '+e.message, false);
+  } finally {
+    btn.disabled=false; btn.textContent='💾 Simpan Data';
+  }
+}
+</script>
+</body>
+</html>
