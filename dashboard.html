@@ -272,7 +272,11 @@ async function init(){
   buildFilters();
   const { data, error } = await sb.from('submissions').select('*');
   if(error){ document.body.insertAdjacentHTML('beforeend','<p style="color:red;text-align:center">Gagal muat data: '+error.message+'</p>'); return; }
-  allData = data;
+  // Supabase simpan kpi/smrp dalam column 'data' — flatten supaya sama macam format lama
+  allData = data.map(r => {
+    const d = r.data || {};
+    return { ...r, kpi: d.kpi || {}, smrp: d.smrp || {} };
+  });
   [...new Set(data.map(d=>d.year))].sort().reverse().forEach(y=>{
     $('fYear').insertAdjacentHTML('beforeend',`<option>${y}</option>`);
   });
@@ -283,7 +287,11 @@ async function init(){
   sb.channel('submissions-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'submissions'}, async ()=>{
       const { data } = await sb.from('submissions').select('*');
-      allData = data; renderAll();
+      allData = data.map(r => {
+        const d = r.data || {};
+        return { ...r, kpi: d.kpi || {}, smrp: d.smrp || {} };
+      });
+      renderAll();
     })
     .subscribe();
 }
