@@ -75,23 +75,37 @@
       <div class="stat"><span class="stat-num" id="stKemaskini">–</span><span class="stat-label">Kemas Kini Terakhir</span></div>
     </div>
 
-    <!-- Pencapaian Negeri (#3) -->
+    <!-- Pencapaian Negeri (#3): bulan semasa + setahun -->
     <div id="negeriCard" style="background:#fff;border-radius:14px;padding:24px 28px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
+      <h3 style="font-size:16px;color:#64748b;font-weight:600">🏆 <span id="negTajuk"></span></h3>
+      <p style="font-size:13px;color:#94a3b8;margin-top:2px;margin-bottom:16px" id="negMetrik"></p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+        <!-- Panel Bulan -->
         <div>
-          <h3 style="font-size:16px;color:#64748b;font-weight:600">🏆 <span id="negBulan"></span></h3>
-          <p style="font-size:13px;color:#94a3b8;margin-top:2px" id="negMetrik"></p>
+          <p style="font-size:13.5px;font-weight:700;color:#334155;margin-bottom:6px" id="negBulanLabel"></p>
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span id="negBulanRate" style="font-size:38px;font-weight:800;line-height:1">–</span>
+            <span id="negBulanStatus" style="font-size:12.5px;font-weight:700"></span>
+          </div>
+          <div style="background:#f1f5f9;border-radius:999px;height:14px;margin-top:10px;overflow:hidden">
+            <div id="negBulanBar" style="height:100%;width:0%;border-radius:999px;background:#16a34a;transition:width .6s"></div>
+          </div>
+          <p style="font-size:12px;color:#94a3b8;margin-top:6px" id="negBulanDetail"></p>
         </div>
-        <div style="text-align:right">
-          <span id="negRate" style="font-size:44px;font-weight:800;line-height:1">–</span>
-          <span style="font-size:18px;color:#94a3b8"> / sasaran <span id="negSasaran">–</span></span>
-          <div id="negStatus" style="margin-top:4px;font-weight:700;font-size:14px"></div>
+        <!-- Panel Setahun -->
+        <div style="border-left:1px solid #e2e8f0;padding-left:20px">
+          <p style="font-size:13.5px;font-weight:700;color:#334155;margin-bottom:6px" id="negTahunLabel"></p>
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span id="negTahunRate" style="font-size:38px;font-weight:800;line-height:1">–</span>
+            <span id="negTahunStatus" style="font-size:12.5px;font-weight:700"></span>
+          </div>
+          <div style="background:#f1f5f9;border-radius:999px;height:14px;margin-top:10px;overflow:hidden">
+            <div id="negTahunBar" style="height:100%;width:0%;border-radius:999px;background:#16a34a;transition:width .6s"></div>
+          </div>
+          <p style="font-size:12px;color:#94a3b8;margin-top:6px" id="negTahunDetail"></p>
         </div>
       </div>
-      <div style="background:#f1f5f9;border-radius:999px;height:18px;margin-top:16px;overflow:hidden">
-        <div id="negBar" style="height:100%;width:0%;border-radius:999px;background:#16a34a;transition:width .6s"></div>
-      </div>
-      <p style="font-size:12.5px;color:#94a3b8;margin-top:8px" id="negDetail"></p>
+      <p style="font-size:12px;color:#cbd5e1;margin-top:12px">Sasaran KPI: <span id="negSasaran"></span> · Rate negeri = jumlah semua N ÷ jumlah semua D × 100</p>
     </div>
 
     <div class="pending" id="pendingCard">
@@ -290,8 +304,8 @@ function renderTable(){
   }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">Tiada data.</td></tr>';
 }
 
-// ---------- Pencapaian Negeri (#3): jumlah N semua ÷ jumlah D ----------
-// KPI: hanya hospital/PKD yang mengisi (bukan KK). SMRP: semua fasiliti.
+// ---------- Pencapaian Negeri (#3): bulan semasa + setahun ----------
+// KPI: hanya hospital/PKD. SMRP: semua fasiliti. Rate = jumlah N ÷ jumlah D.
 function renderNegeri(){
   const card = $('negeriCard');
   const mv = metricValue();
@@ -299,57 +313,66 @@ function renderNegeri(){
   const target = isKPI ? TARGET_KPI : null;
   const katFilter = $('fKat').value;
 
-  // Senarai fasiliti ikut metrik: KPI = hospital sahaja, SMRP = semua
   let facilities;
-  if(isKPI){
-    facilities = (katFilter === 'hospital') ? HOSPITALS : HOSPITALS;
-    // KPI tidak dilaporkan oleh KK — kecualikan KK sentiasa
-  } else {
+  if(isKPI){ facilities = HOSPITALS; }
+  else {
     if(katFilter === 'kk') facilities = KK;
     else if(katFilter === 'hospital') facilities = HOSPITALS;
     else facilities = [...HOSPITALS, ...KK];
   }
 
   const yr = $('fYear').value || Math.max(...allData.map(d=>d.year));
-  $('negBulan').textContent = 'Pencapaian ' + (isKPI?'KPI':'SMRP') + ' Negeri ' + yr;
+  const moFilter = $('fMonth').value ? parseInt($('fMonth').value) : null;
 
-  // Bulan: ikut pilihan user, jika tiada guna bulan terkini fasiliti berkenaan
-  let pool = allData.filter(d => String(d.year)===String(yr) && facilities.includes(d.hospital));
-  if(!pool.length){ card.style.display='none'; return; }
-  const moFilter = $('fMonth').value;
-  const monthUse = moFilter ? parseInt(moFilter) : Math.max(...pool.map(d=>d.month));
-
-  // Jumlah N & D dari subkategori bagi bulan terpilih
-  let totN=0, totD=0, count=0;
-  pool.filter(d=>d.month===monthUse).forEach(r=>{
-    const e = getEntry(r, mv);
-    if(!e) return;
-    const n=parseFloat(e.numerator), d=parseFloat(e.denominator);
-    if(isNaN(n)||isNaN(d)) return;
-    totN+=n; totD+=d; count++;
-  });
-
+  $('negTajuk').textContent = 'Pencapaian ' + (isKPI?'KPI':'SMRP') + ' Negeri ' + yr;
   $('negMetrik').textContent = getMetricLabel(mv) + ' · ' +
     (isKPI ? facilities.length + ' hospital/PKD' : facilities.length + ' fasiliti');
+  $('negSasaran').textContent = target!==null ? target+'%' : 'tiada (SMRP)';
 
-  if(totD===0){ card.style.display='none'; return; }
-  const rate = totN/totD*100;
-  $('negRate').textContent = rate.toFixed(2)+'%';
+  const pool = allData.filter(d => String(d.year)===String(yr) && facilities.includes(d.hospital));
+  if(!pool.length){ card.style.display='none'; return; }
 
-  // Warna & status
-  let color='#16a34a', status='✔ Mencapai sasaran';
-  if(target!==null && rate<target-5){ color='#dc2626'; status='✘ Jauh dari sasaran'; }
-  else if(target!==null && rate<target){ color='#d97706'; status='⚠ Hampir capai sasaran'; }
-  else if(target===null){ color=isKPI?'#16a34a':'#2563eb'; status='Tiada sasaran ditetapkan (SMRP)'; }
-  $('negRate').style.color = color;
-  $('negStatus').textContent = status;
-  $('negStatus').style.color = color;
-  $('negSasaran').textContent = target!==null ? target+'%' : '–';
-  $('negBar').style.width = Math.min(rate,100)+'%';
-  $('negBar').style.background = color;
+  // Kira jumlah N/D untuk satu set bulan
+  function kira(months){
+    let totN=0, totD=0, fasAda=0, recCount=0;
+    pool.filter(d => months.includes(d.month)).forEach(r=>{
+      const e = getEntry(r, mv);
+      if(!e) return;
+      const n=parseFloat(e.numerator), d=parseFloat(e.denominator);
+      if(isNaN(n)||isNaN(d)) return;
+      totN+=n; totD+=d; recCount++;
+    });
+    fasAda = new Set(pool.filter(d=>months.includes(d.month) && getEntry(d,mv)).map(d=>d.hospital)).size;
+    return {totN, totD, fasAda, recCount};
+  }
+  function papar(prefix, k, label){
+    // prefix: 'negBulan' -> ids: negBulanLabel/Rate/Bar/Detail ; status: negStatusBulan/negStatusTahun
+    if(k.totD===0){ $('neg'+prefix+'Rate').textContent='–'; const st=$('neg'+prefix+'Status'); st.textContent='Tiada data';
+      st.style.color='#94a3b8'; $('neg'+prefix+'Bar').style.width='0%';
+      $('neg'+prefix+'Detail').textContent=label+' · tiada rekod'; return; }
+    const rate = k.totN/k.totD*100;
+    const el = $('neg'+prefix+'Rate'); el.textContent = rate.toFixed(2)+'%';
+    let color='#16a34a', status='✔ Capai sasaran';
+    if(target!==null && rate<target-5){ color='#dc2626'; status='✘ Jauh dari sasaran'; }
+    else if(target!==null && rate<target){ color='#d97706'; status='⚠ Hampir capai'; }
+    else if(target===null){ color=isKPI?'#16a34a':'#2563eb'; status=''; }
+    el.style.color=color;
+    const st=$('neg'+prefix+'Status'); st.textContent=status; st.style.color=color;
+    $('neg'+prefix+'Bar').style.width=Math.min(rate,100)+'%';
+    $('neg'+prefix+'Bar').style.background=color;
+    $('neg'+prefix+'Detail').textContent=label+' · '+k.fasAda+' fasiliti hantar · N='+k.totN.toLocaleString()+' · D='+k.totD.toLocaleString();
+  }
 
-  $('negDetail').textContent =
-    'Bulan '+BULAN_PENUH[monthUse-1]+' '+yr+' · '+count+' dari '+facilities.length+' fasiliti menghantar · Jumlah N='+totN.toLocaleString()+' · Jumlah D='+totD.toLocaleString();
+  // Panel Bulan: bulan terkini atau bulan pilihan user
+  const monthUse = moFilter || Math.max(...pool.map(d=>d.month));
+  $('negBulanLabel').textContent = 'Bulan ' + BULAN_PENUH[monthUse-1] + ' ' + yr;
+  papar('Bulan', kira([monthUse]), BULAN_PENUH[monthUse-1]+' '+yr);
+
+  // Panel Setahun: Jan hingga bulan terkini
+  const maxMonth = Math.max(...pool.map(d=>d.month));
+  $('negTahunLabel').textContent = 'Setahun (' + BULAN_PENUH[0] + '–' + BULAN_PENUH[maxMonth-1] + ' ' + yr + ')';
+  papar('Tahun', kira(Array.from({length:maxMonth},(_,i)=>i+1)),
+    'Jan–'+BULAN_PENUH[maxMonth-1]);
 
   card.style.display='block';
 }
