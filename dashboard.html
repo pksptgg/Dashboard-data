@@ -75,6 +75,25 @@
       <div class="stat"><span class="stat-num" id="stKemaskini">–</span><span class="stat-label">Kemas Kini Terakhir</span></div>
     </div>
 
+    <!-- Pencapaian Negeri (#3) -->
+    <div id="negeriCard" style="background:#fff;border-radius:14px;padding:24px 28px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
+        <div>
+          <h3 style="font-size:16px;color:#64748b;font-weight:600">🏆 Pencapaian Negeri — <span id="negBulan"></span></h3>
+          <p style="font-size:13px;color:#94a3b8;margin-top:2px" id="negMetrik"></p>
+        </div>
+        <div style="text-align:right">
+          <span id="negRate" style="font-size:44px;font-weight:800;line-height:1">–</span>
+          <span style="font-size:18px;color:#94a3b8"> / sasaran <span id="negSasaran">–</span></span>
+          <div id="negStatus" style="margin-top:4px;font-weight:700;font-size:14px"></div>
+        </div>
+      </div>
+      <div style="background:#f1f5f9;border-radius:999px;height:18px;margin-top:16px;overflow:hidden">
+        <div id="negBar" style="height:100%;width:0%;border-radius:999px;background:#16a34a;transition:width .6s"></div>
+      </div>
+      <p style="font-size:12.5px;color:#94a3b8;margin-top:8px" id="negDetail"></p>
+    </div>
+
     <div class="pending" id="pendingCard">
       <h3 style="margin-bottom:6px">⏳ Belum Hantar — <span id="pendingLabel"></span></h3>
       <div id="pendingList"></div>
@@ -271,7 +290,67 @@ function renderTable(){
   }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">Tiada data.</td></tr>';
 }
 
-function renderAll(){ populateFas(); renderStats(); renderPending(); renderTrend(); renderBar(); renderCompare(); renderTable(); }
+// ---------- Pencapaian Negeri (#3): jumlah N semua ÷ jumlah D, ikut bulan terkini ----------
+function renderNegeri(){
+  const card = $('negeriCard');
+  const mv = metricValue();
+  const isKPI = mv.startsWith('kpi');
+  const target = isKPI ? TARGET_KPI : null;
+
+  // Ikut filter tahun & kategori; guna bulan terkini kecuali user pilih bulan tertentu
+  let pool = filtered();
+  const yr = $('fYear').value;
+  if(yr) pool = pool.filter(d=>String(d.year)===yr);
+  if(!pool.length){ card.style.display='none'; return; }
+
+  let monthKeyUse;
+  const moFilter = $('fMonth').value;
+  if(moFilter){
+    monthKeyUse = Math.max(...pool.filter(d=>String(d.month)===moFilter).map(mkey), NaN);
+    if(isNaN(monthKeyUse)){ card.style.display='none'; return; }
+  } else {
+    monthKeyUse = Math.max(...pool.map(mkey));
+  }
+  const recs = pool.filter(d=>mkey(d)===monthKeyUse);
+  const y = Math.floor(monthKeyUse/100), m = monthKeyUse%100;
+
+  // Jumlah N & D dari subkategori (bukan purata rate!)
+  let totN=0, totD=0, count=0;
+  recs.forEach(r=>{
+    const e = getEntry(r, mv);
+    if(!e) return;
+    const n=parseFloat(e.numerator), d=parseFloat(e.denominator);
+    if(isNaN(n)||isNaN(d)) return;
+    totN+=n; totD+=d; count++;
+  });
+
+  $('negBulan').textContent = BULAN_PENUH[m-1]+' '+y;
+  $('negMetrik').textContent = getMetricLabel(mv);
+
+  if(totD===0){ card.style.display='none'; return; }
+  const rate = totN/totD*100;
+  $('negRate').textContent = rate.toFixed(2)+'%';
+
+  // Warna & status
+  let color='#16a34a', status='✔ Mencapai sasaran';
+  if(target!==null && rate<target-5){ color='#dc2626'; status='✘ Jauh dari sasaran'; }
+  else if(target!==null && rate<target){ color='#d97706'; status='⚠ Hampir capai sasaran'; }
+  else if(target===null){ color=isKPI?'#16a34a':'#2563eb'; status='Tiada sasaran ditetapkan (SMRP)'; }
+  $('negRate').style.color = color;
+  $('negStatus').textContent = status;
+  $('negStatus').style.color = color;
+  $('negSasaran').textContent = target!==null ? target+'%' : '–';
+  $('negBar').style.width = Math.min(rate,100)+'%';
+  $('negBar').style.background = color;
+
+  const fasCount = new Set(recs.map(d=>d.hospital)).size;
+  $('negDetail').textContent =
+    'Dikira dari '+count+' rekod ('+fasCount+' fasiliti) · Jumlah N='+totN.toLocaleString()+' · Jumlah D='+totD.toLocaleString();
+
+  card.style.display='block';
+}
+
+function renderAll(){ populateFas(); renderStats(); renderPending(); renderNegeri(); renderTrend(); renderBar(); renderCompare(); renderTable(); }
 
 // ---------- Export Excel (format sama macam versi lokal) ----------
 const BULAN_EXPORT = ['JANUARI','FEBRUARI','MAC','APRIL','MEI','JUN','JUL','OGOS','SEPT','OKT','NOV','DIS'];
