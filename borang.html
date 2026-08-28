@@ -28,6 +28,11 @@
     .rate-display { font-size:22px; font-weight:800; color:#166534; margin-top:4px; }
     .btn { display:inline-block; padding:13px 26px; border-radius:10px; font-weight:600; font-size:15px; cursor:pointer; border:none; background:#2563eb; color:#fff; width:100%; }
     .btn:hover { background:#1d4ed8; }
+    /* Kod warna kekal: HIJAU = KPI, BIRU = SMRP */
+    .btn-kpi { background:#059669; } .btn-kpi:hover { background:#047857; }
+    .btn-smrp { background:#2563eb; } .btn-smrp:hover { background:#1d4ed8; }
+    .metric-box.kpi { border-color:#86efac; } .metric-box.kpi h3 { color:#047857; }
+    .metric-box.smrp { border-color:#93c5fd; }
     .btn:disabled { opacity:.6; cursor:not-allowed; }
     #msg { padding:14px 18px; border-radius:10px; margin-bottom:20px; display:none; font-weight:500; }
     .ok { background:#dcfce7; color:#166534; } .err { background:#fee2e2; color:#991b1b; }
@@ -62,6 +67,7 @@
 
       <label for="fasiliti">Fasiliti</label>
       <select id="fasiliti"></select>
+      <p id="pkdInfo" style="display:none;font-size:13px;color:#2563eb;font-weight:600;margin:-10px 0 14px"></p>
 
       <div class="grid2">
         <div>
@@ -75,28 +81,28 @@
       </div>
 
       <!-- KPI section -->
-      <div class="metric-box" id="kpiBox">
+      <div class="metric-box kpi" id="kpiBox">
         <h3>KPI 1 — Masa Tindakbalas Awal Rujukan (≤2 hari bekerja) · Sasaran ≥98%</h3>
         <div class="grid2">
           <div><label>Numerator (N)</label><input type="number" id="kpiN" min="0" placeholder="cth. 14"></div>
           <div><label>Denominator (D)</label><input type="number" id="kpiD" min="0" placeholder="cth. 14"></div>
         </div>
         <div>Rate KPI: <span class="rate-display" id="kpiRate">–</span></div>
+        <button class="btn btn-kpi" id="kpiBtn" onclick="simpan('kpi')" style="margin-top:14px">📤 Hantar KPI</button>
       </div>
 
       <!-- SMRP section -->
-      <div class="metric-box" style="margin-top:16px">
+      <div class="metric-box smrp" id="smrpBox" style="margin-top:16px">
         <h3>SMRP — Jumlah Kemasukan Data SMRP KKM</h3>
         <div class="grid2">
           <div><label>Numerator (N)</label><input type="number" id="smrpN" min="0" placeholder="cth. 385"></div>
           <div><label>Denominator (D)</label><input type="number" id="smrpD" min="0" placeholder="cth. 385"></div>
         </div>
         <div>Rate SMRP: <span class="rate-display" id="smrpRate">–</span></div>
+        <button class="btn btn-smrp" id="smrpBtn" onclick="simpan('smrp')" style="margin-top:14px">📤 Hantar SMRP</button>
       </div>
 
-      <br>
-      <button class="btn" id="submitBtn" onclick="simpan()">💾 Simpan Data</button>
-      <p style="font-size:13px;color:#94a3b8;margin-top:12px;text-align:center">Isi semula bulan yang sama akan menggantikan data lama.</p>
+      <p style="font-size:13px;color:#94a3b8;margin-top:16px;text-align:center">KPI &amp; SMRP dihantar berasingan — hantar satu tidak memadamkan yang satu lagi. Isi semula bulan yang sama menggantikan data lama.</p>
     </div>
   </main>
 
@@ -109,6 +115,17 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
 const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"];
+// PKD (Pejabat Kesihatan) = KPI sahaja, tiada SMRP. Setiap KK di-tag ke PKD dia.
+const PKD = ["Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
+const KK_TO_PKD = {
+  "KK Kuala Berang":"Pejabat Kesihatan Hulu Terengganu","KK Ajil":"Pejabat Kesihatan Hulu Terengganu",
+  "KK Kuala Telemong":"Pejabat Kesihatan Hulu Terengganu","KK Tengkawang":"Pejabat Kesihatan Hulu Terengganu",
+  "KK Felda Mengkawang":"Pejabat Kesihatan Hulu Terengganu",
+  "KK Jabi":"Pejabat Kesihatan Daerah Besut","KK Jerteh":"Pejabat Kesihatan Daerah Besut",
+  "KK Kota Putera Besut":"Pejabat Kesihatan Daerah Besut","KK Kuala Besut":"Pejabat Kesihatan Daerah Besut",
+  "KK Pasir Akar":"Pejabat Kesihatan Daerah Besut","KK Pulau Perhentian":"Pejabat Kesihatan Daerah Besut",
+  "KK Padang Luas":"Pejabat Kesihatan Daerah Besut","KK Seri Medang":"Pejabat Kesihatan Daerah Besut"
+};
 const BULAN = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
 
 const $ = id => document.getElementById(id);
@@ -117,7 +134,17 @@ function populateFasiliti(){
   const kat = $('kategori').value;
   const list = kat === 'kk' ? KK : HOSPITALS;
   $('fasiliti').innerHTML = '<option value="">-- Pilih --</option>' + list.map(f=>`<option>${f}</option>`).join('');
+  kemaskiniBox();
+}
+// Peraturan: PKD = KPI sahaja · KK = SMRP sahaja · hospital biasa = kedua-dua
+function kemaskiniBox(){
+  const kat = $('kategori').value, f = $('fasiliti').value;
+  const isPKD = kat === 'hospital' && PKD.includes(f);
   $('kpiBox').style.display = kat === 'kk' ? 'none' : '';
+  $('smrpBox').style.display = isPKD ? 'none' : '';
+  const info = $('pkdInfo');
+  if(kat === 'kk' && f && KK_TO_PKD[f]){ info.textContent = '🏥 Di bawah PKD: ' + KK_TO_PKD[f]; info.style.display = 'block'; }
+  else info.style.display = 'none';
 }
 function rate(n,d){ n=parseFloat(n); d=parseFloat(d); if(isNaN(n)||isNaN(d)||d===0) return null; return (n/d*100); }
 function updateRate(prefix){
@@ -130,14 +157,15 @@ function showMsg(text, ok){
 }
 
 $('kategori').addEventListener('change', populateFasiliti);
+$('fasiliti').addEventListener('change', kemaskiniBox);
 $('bulan').innerHTML = BULAN.map((b,i)=>`<option value="${i+1}">${b}</option>`).join('');
 $('bulan').value = new Date().getMonth()+1;
 ['kpiN','kpiD'].forEach(id=>$(id).addEventListener('input',()=>updateRate('kpi')));
 ['smrpN','smrpD'].forEach(id=>$(id).addEventListener('input',()=>updateRate('smrp')));
 populateFasiliti();
 
-async function simpan(){
-  const btn = $('submitBtn');
+async function simpan(jenis){ // jenis = 'kpi' atau 'smrp'
+  const btn = $(jenis === 'kpi' ? 'kpiBtn' : 'smrpBtn');
   const fasiliti = $('fasiliti').value;
   if(!fasiliti) return showMsg('⚠️ Sila pilih fasiliti.', false);
   const kategori = $('kategori').value;
@@ -145,29 +173,33 @@ async function simpan(){
   const year = parseInt($('tahun').value);
   if(!year || year<2020) return showMsg('⚠️ Tahun tidak sah.', false);
 
-  const kpiEmpty = !$('kpiN').value && !$('kpiD').value;
-  const smrpEmpty = !$('smrpN').value && !$('smrpD').value;
-  if(kpiEmpty && smrpEmpty) return showMsg('⚠️ Isi sekurang-kurangnya satu metrik (KPI atau SMRP).', false);
+  const nVal = $(jenis+'N').value, dVal = $(jenis+'D').value;
+  if(!nVal && !dVal) return showMsg('⚠️ Isi N dan/atau D bahagian '+jenis.toUpperCase()+' dahulu.', false);
 
   const data = {};
-  if(!kpiEmpty) data.kpi = { kpi1: { numerator: parseFloat($('kpiN').value)||0, denominator: parseFloat($('kpiD').value)||0 } };
-  if(!smrpEmpty) data.smrp = { smrp1: { numerator: parseFloat($('smrpN').value)||0, denominator: parseFloat($('smrpD').value)||0 } };
+  data[jenis] = { [jenis+'1']: { numerator: parseFloat(nVal)||0, denominator: parseFloat(dVal)||0 } };
 
   btn.disabled = true; btn.textContent = 'Menyimpan...';
   try {
+    // Ambil rekod sedia ada dulu supaya metrik satu lagi tidak terpadam bila upsert
+    const { data: existing, error: fe } = await sb.from('submissions')
+      .select('data').eq('hospital', fasiliti).eq('year', year).eq('month', month).maybeSingle();
+    if(fe) throw fe;
+    const merged = { ...(existing && existing.data ? existing.data : {}), ...data };
+
     // upsert: ganti jika hospital+year+month sama
     const { error } = await sb.from('submissions').upsert(
-      { hospital: fasiliti, kategori, year, month, data, submitted_at: new Date().toISOString() },
+      { hospital: fasiliti, kategori, year, month, data: merged, submitted_at: new Date().toISOString() },
       { onConflict: 'hospital,year,month' }
     );
     if(error) throw error;
-    showMsg('✅ Data '+fasiliti+' ('+BULAN[month-1]+' '+year+') berjaya disimpan!', true);
-    ['kpiN','kpiD','smrpN','smrpD'].forEach(id=>$(id).value='');
-    updateRate('kpi'); updateRate('smrp');
+    showMsg('✅ '+jenis.toUpperCase()+' '+fasiliti+' ('+BULAN[month-1]+' '+year+') berjaya dihantar!', true);
+    [jenis+'N', jenis+'D'].forEach(id=>$(id).value='');
+    updateRate(jenis);
   } catch(e){
     showMsg('❌ Gagal simpan: '+e.message, false);
   } finally {
-    btn.disabled=false; btn.textContent='💾 Simpan Data';
+    btn.disabled=false; btn.textContent = jenis === 'kpi' ? '📤 Hantar KPI' : '📤 Hantar SMRP';
   }
 }
 </script>

@@ -156,6 +156,19 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
 const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"];
+// Struktur SMRP: PKD tiada data sendiri — TOTAL PKD = jumlah KK bawahnya. PKD hanya KPI.
+const PKD = ["Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
+const KK_GROUPS = {
+  "Pejabat Kesihatan Hulu Terengganu": ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang"],
+  "Pejabat Kesihatan Daerah Besut": ["KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"]
+};
+const HOSPITALS_ONLY = HOSPITALS.filter(h=>!PKD.includes(h));          // 6 hospital (SMRP + KPI)
+const FAS_SMRP = [...HOSPITALS_ONLY, ...KK];                            // 19 fasiliti SMRP
+const FAS_KPI  = HOSPITALS;                                             // 8 (6 hospital + 2 PKD)
+function fasList(kat, isKPI){
+  if(isKPI) return kat==='kk' ? [] : (kat==='hospital' ? HOSPITALS : FAS_KPI);
+  return kat==='kk' ? KK : kat==='hospital' ? HOSPITALS_ONLY : FAS_SMRP;
+}
 const BULAN = ['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogo','Sep','Okt','Nov','Dis'];
 const BULAN_PENUH = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
 const COLORS = ['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#4f46e5','#ea580c','#0d9488','#b45309'];
@@ -175,6 +188,8 @@ function getEntry(rec, metric){
   const [type,id] = metric.split(':');
   return rec[type] ? rec[type][id] : null;
 }
+// Ada data sebenar = denominator > 0. Rekod 0/0 (dari template Excel) dikira BELUM hantar.
+function adaData(e){ if(!e) return false; const d = parseFloat(e.denominator); return !isNaN(d) && d>0; }
 
 function buildFilters(){
   $('fMonth').innerHTML = '<option value="">Semua</option>' + BULAN_PENUH.map((b,i)=>`<option value="${i+1}">${b}</option>`).join('');
@@ -184,7 +199,8 @@ function buildFilters(){
 }
 function populateFas(){
   const kat = $('fKat').value;
-  const list = kat==='kk' ? KK : kat==='hospital' ? HOSPITALS : [...HOSPITALS,...KK];
+  const isKPI = metricValue().startsWith('kpi');
+  const list = fasList(kat, isKPI);
   const cur = $('fFas').value;
   $('fFas').innerHTML = '<option value="">Semua</option>'+list.map(f=>`<option>${f}</option>`).join('');
   if(cur && list.includes(cur)) $('fFas').value = cur;
@@ -213,9 +229,10 @@ function renderPending(){
   const latest = Math.max(...pool.map(mkey));
   const y=Math.floor(latest/100), m=latest%100;
   const kat = $('fKat').value;
-  const fasList = kat==='kk'?KK:kat==='hospital'?HOSPITALS:[...HOSPITALS,...KK];
-  const submitted = new Set(pool.filter(d=>mkey(d)===latest).map(d=>d.hospital));
-  const pending = fasList.filter(f=>!submitted.has(f));
+  const isKPI = metricValue().startsWith('kpi');
+  const fas = fasList(kat, isKPI);
+  const submitted = new Set(pool.filter(d=>mkey(d)===latest && adaData(getEntry(d, metricValue()))).map(d=>d.hospital));
+  const pending = fas.filter(f=>!submitted.has(f));
   $('pendingLabel').textContent = BULAN_PENUH[m-1]+' '+y;
   $('pendingList').innerHTML = pending.length
     ? pending.map(p=>`<span class="badge badge-bad">${p}</span>`).join('')
@@ -224,7 +241,7 @@ function renderPending(){
 }
 
 function renderTrend(){
-  const data = filtered(), mv = metricValue();
+  const data = dataForMetric(filtered(), metricValue()), mv = metricValue();
   $('trendSub').textContent = getMetricLabel(mv);
   const fas = [...new Set(data.map(d=>d.hospital))].sort();
   const keys = [...new Set(data.map(mkey))].sort();
@@ -238,15 +255,27 @@ function renderTrend(){
     borderWidth:2, tension:.3, spanGaps:true, pointRadius:3
   }));
   datasets.push({label:'Sasaran ('+TARGET_KPI+'%)',data:keys.map(()=>TARGET_KPI),borderColor:'#f59e0b',borderDash:[6,4],pointRadius:0});
+  // Y-axis adaptif: mula dekat nilai terendah supaya kelok/pembetulan nampak (bukan sentiasa 0)
+  const vals = datasets.flatMap(d=>d.data).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
+  const lo = vals.length ? Math.min(...vals) : 0;
+  const hi = vals.length ? Math.max(...vals, TARGET_KPI) : 105;
+  const ymin = Math.max(0, Math.floor(lo-5));
+  const ymax = Math.min(105, Math.ceil(hi+2));
   if(chTrend) chTrend.destroy();
   chTrend = new Chart($('chTrend'),{type:'line',data:{labels:keys.map(k=>BULAN[k%100-1]+' '+String(Math.floor(k/100)).slice(2)),datasets},
-    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:105}}}});
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:ymin,max:ymax}}}});
 }
 
 function getMetricLabel(mv){ return mv.startsWith('kpi') ? 'KPI 1 — Masa Tindakbalas Awal Rujukan (%)' : 'SMRP — Jumlah Kemasukan Data (%)'; }
 
+// Buang fasiliti yang tak berkenaan dgn metrik (KPI → KK dibuang; SMRP → PKD dibuang) supaya graf tak nampak kosong
+function dataForMetric(data, mv){
+  const fas = new Set(fasList($('fKat').value, mv.startsWith('kpi')));
+  return data.filter(d=>fas.has(d.hospital));
+}
+
 function renderBar(){
-  const data = filtered(), mv = metricValue();
+  const data = dataForMetric(filtered(), metricValue()), mv = metricValue();
   const keys = [...new Set(data.map(mkey))].sort();
   if(!keys.length){ $('barSub').textContent='Tiada data.'; if(chBar) chBar.destroy(); return; }
   const latest = keys[keys.length-1], y=Math.floor(latest/100), m=latest%100;
@@ -264,7 +293,7 @@ function renderBar(){
 }
 
 function renderCompare(){
-  const data = filtered(), mv = metricValue();
+  const data = dataForMetric(filtered(), metricValue()), mv = metricValue();
   const fas = [...new Set(data.map(d=>d.hospital))].sort();
   const keys = [...new Set(data.map(mkey))].sort();
   if(!fas.length || !keys.length){ if(chCmp) chCmp.destroy(); return; }
@@ -313,13 +342,7 @@ function renderNegeri(){
   const target = isKPI ? TARGET_KPI : null;
   const katFilter = $('fKat').value;
 
-  let facilities;
-  if(isKPI){ facilities = HOSPITALS; }
-  else {
-    if(katFilter === 'kk') facilities = KK;
-    else if(katFilter === 'hospital') facilities = HOSPITALS;
-    else facilities = [...HOSPITALS, ...KK];
-  }
+  const facilities = fasList(katFilter, isKPI);
 
   const yr = $('fYear').value || Math.max(...allData.map(d=>d.year));
   const moFilter = $('fMonth').value ? parseInt($('fMonth').value) : null;
@@ -438,39 +461,79 @@ function exportSMRP(){
   const year = parseInt($('fYear').value) || Math.max(...allData.map(d=>d.year));
   const wb = XLSX.utils.book_new();
 
+  // Peraturan: TOTAL PKD = jumlah KK bawahnya (PKD tiada row sendiri); GRAND TOTAL = semua fasiliti.
+  function blokFac(title, entries){
+    // entries: [[no, nama], ...] ; pulangkan rows AOA + totals per bulan
+    const rows = [];
+    rows.push([title]); rows.push(['NEGERI : TERENGGANU']);
+    rows.push(['FASILITI : ' + (title.includes('KLINIK') ? 'KLINIK KESIHATAN' : 'HOSPITAL')]);
+    const h1 = ['No.','Fasiliti'], h2 = ['',''], h3 = ['',''];
+    BULAN_EXPORT.forEach(b=>{ h1.push(b,'',''); h2.push('Numerator (N)','Denominator (D)','RATE (N / D) x 100%'); h3.push('','',''); });
+    rows.push(h1, h2, h3);
+    const totals = Array.from({length:12},()=>({n:0,d:0}));
+    entries.forEach(([no,nama])=>{
+      const row = [no, nama];
+      for(let m=1;m<=12;m++){
+        const rec = allData.find(d=>d.hospital===nama && d.year===year && d.month===m);
+        const e = rec?.smrp?.smrp1;
+        const n = e?parseInt(e.numerator)||0:null, d=e?parseInt(e.denominator)||0:null;
+        if(n!==null)totals[m-1].n+=n; if(d!==null)totals[m-1].d+=d;
+        row.push(n??'', d??'', rateCalc(e)??'');
+      }
+      rows.push(row);
+    });
+    return {rows, totals};
+  }
   const rows = [];
-  rows.push(['JUMLAH KEMASUKAN DATA DALAM SISTEM SMRP KKM']);
-  rows.push(['NEGERI : TERENGGANU']);
-  rows.push(['FASILITI : HOSPITAL & KLINIK KESIHATAN']);
-  // Header: No | Fasiliti | 12 bulan × (N,D,R)
-  const header1 = ['No.','Fasiliti'];
-  const header2 = ['',''];
-  const header3 = ['',''];
-  BULAN_EXPORT.forEach(b=>{
-    header1.push(b,'','');
-    header2.push('Numerator (N)','Denominator (D)','RATE (N / D) x 100%');
-    header3.push('','','');
-  });
-  rows.push(header1); rows.push(header2); rows.push(header3);
 
-  const allFac = [...HOSPITALS.map(h=>[h,'hospital']), ...KK.map(k=>[k,'kk'])];
-  let idx = 1;
-  const totals = Array.from({length:12},()=>({n:0,d:0}));
-  allFac.forEach(([fac,kat])=>{
-    const row = [idx++, fac];
-    for(let m=1;m<=12;m++){
-      const rec = allData.find(d=>d.hospital===fac && d.year===year && d.month===m);
-      const e = rec?.smrp?.smrp1;
-      const n = e?parseInt(e.numerator)||0:null, d=e?parseInt(e.denominator)||0:null;
-      if(n!==null)totals[m-1].n+=n; if(d!==null)totals[m-1].d+=d;
-      row.push(n??'', d??'', rateCalc(e)??'');
-    }
-    rows.push(row);
+  // ===== SEKSYEN 1: HOSPITAL (6) + GRAND TOTAL =====
+  const hEnt = HOSPITALS_ONLY.map((h,i)=>[i+1, h]);
+  const hBlok = blokFac('JUMLAH KEMASUKAN DATA DALAM SISTEM SMRP KKM — HOSPITAL', hEnt);
+  rows.push(...hBlok.rows);
+  rows.push(['','GRAND TOTAL', ...hBlok.totals.flatMap(t=>[t.n||'', t.d||'', t.d?Math.round(t.n/t.d*10000)/100:''])]);
+  rows.push([]); rows.push([]);
+  rows.push(['','Numerator (N)',' : Jumlah Kemasukan data SMRP (Ad Hoc Query)']);
+  rows.push(['','Denominator (D)',' : Jumlah Kedatangan Pesakit']);
+  rows.push([]); rows.push([]);
+
+  // ===== SEKSYEN 2: KLINIK KESIHATAN (13, berkelompok ikut PKD + TOTAL per PKD) =====
+  const kkRows = [];
+  let kkNo = 1;
+  const grand = Array.from({length:12},()=>({n:0,d:0}));
+  Object.entries(KK_GROUPS).forEach(([pkd, kks])=>{
+    kkRows.push(['', pkd.toUpperCase()]);                      // header PKD
+    const grpEnt = kks.map(k=>[kkNo++, k]);
+    const g = blokFacSub(grpEnt);                              // kira totals tanpa header blok
+    g.rows.forEach(r=>kkRows.push(r));
+    // TOTAL = jumlah KK dalam PKD ini (= nilai "PKD")
+    kkRows.push(['','TOTAL', ...g.totals.flatMap(t=>[t.n||'', t.d||'', t.d?Math.round(t.n/t.d*10000)/100:''])]);
+    kkRows.push([]);                                           // baris kosong antara PKD
+    g.totals.forEach((t,i)=>{ grand[i].n+=t.n; grand[i].d+=t.d; });
   });
-  // GRAND TOTAL
-  const gt = ['','GRAND TOTAL'];
-  totals.forEach(t=>gt.push(t.n||'', t.d||'', t.d?Math.round(t.n/t.d*10000)/100:''));
-  rows.push(gt);
+  function blokFacSub(entries){
+    const out = [];
+    const totals = Array.from({length:12},()=>({n:0,d:0}));
+    entries.forEach(([no,nama])=>{
+      const row = [no, nama];
+      for(let m=1;m<=12;m++){
+        const rec = allData.find(d=>d.hospital===nama && d.year===year && d.month===m);
+        const e = rec?.smrp?.smrp1;
+        const n = e?parseInt(e.numerator)||0:null, d=e?parseInt(e.denominator)||0:null;
+        if(n!==null)totals[m-1].n+=n; if(d!==null)totals[m-1].d+=d;
+        row.push(n??'', d??'', rateCalc(e)??'');
+      }
+      out.push(row);
+    });
+    return {rows:out, totals};
+  }
+  rows.push(['JUMLAH KEMASUKAN DATA DALAM SISTEM SMRP KKM — KLINIK KESIHATAN']);
+  rows.push(['NEGERI : TERENGGANU']);
+  rows.push(['FASILITI : KLINIK KESIHATAN']);
+  const kh1 = ['No.','Fasiliti'], kh2 = ['',''], kh3 = ['',''];
+  BULAN_EXPORT.forEach(b=>{ kh1.push(b,'',''); kh2.push('Numerator (N)','Denominator (D)','RATE (N / D) x 100%'); kh3.push('','',''); });
+  rows.push(kh1, kh2, kh3);
+  rows.push(...kkRows);
+  rows.push(['','GRAND TOTAL', ...grand.flatMap(t=>[t.n||'', t.d||'', t.d?Math.round(t.n/t.d*10000)/100:''])]);
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{wch:6},{wch:36}];
