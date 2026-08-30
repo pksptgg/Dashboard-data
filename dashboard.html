@@ -44,6 +44,9 @@
     .rate-good { background:#dcfce7!important; color:#166534; font-weight:600; }
     .rate-warn { background:#fef9c3!important; color:#854d0e; font-weight:600; }
     .rate-bad { background:#fee2e2!important; color:#991b1b; font-weight:600; }
+    .rate-smrp { background:#dbeafe!important; color:#1d4ed8; font-weight:600; }
+    .row-kpi { background:#f0fdf4!important; }
+    .row-smrp { background:#eff6ff!important; }
     footer { text-align:center; padding:24px; color:#94a3b8; font-size:13px; }
   </style>
 </head>
@@ -320,16 +323,20 @@ function renderTable(){
     const r = rate(e);
     return (e.numerator??'–')+' / '+(e.denominator??'–')+' / '+(r===null?'–':r.toFixed(2)+'%');
   };
-  const cls = e=>{
-    const r = rate(e); if(r===null||!mv.startsWith('kpi')) return '';
+  // Warna ikut metrik: KPI hijau (sasaran), SMRP biru (ada data sahaja)
+  const clsK = e=>{
+    const r = rate(e); if(r===null) return '';
     return r>=98?'rate-good':r>=93?'rate-warn':'rate-bad';
   };
+  const clsS = e=> adaData(e) ? 'rate-smrp' : '';
   $('tbody').innerHTML = rows.length ? rows.map(d=>{
     const k=d.kpi?.kpi1, s=d.smrp?.smrp1;
-    return `<tr><td>${d.hospital}</td><td>${d.kategori==='kk'?'Klinik Kesihatan':'Hospital'}</td>`+
+    // Baris highlight ikut metrik aktif: KPI -> hijau lembut, SMRP -> biru lembut
+    const rowCls = mv.startsWith('kpi') ? (adaData(k)?'row-kpi':'') : (adaData(s)?'row-smrp':'');
+    return `<tr class="${rowCls}"><td>${d.hospital}</td><td>${d.kategori==='kk'?'Klinik Kesihatan':'Hospital'}</td>`+
       `<td>${BULAN_PENUH[d.month-1]}</td><td>${d.year}</td>`+
-      (isKK?'':`<td class="${cls(k)}">${fmt(k)}</td>`)+
-      `<td class="${cls(s)}">${fmt(s)}</td></tr>`;
+      (isKK?'':`<td class="${clsK(k)}">${fmt(k)}</td>`)+
+      `<td class="${clsS(s)}">${fmt(s)}</td></tr>`;
   }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">Tiada data.</td></tr>';
 }
 
