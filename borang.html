@@ -112,6 +112,8 @@
 const SUPABASE_URL = 'https://qclmomhiusxnushtegac.supabase.co';
 const SUPABASE_KEY = 'sb_publishable__6aMvgPPzo6ds2ucSuMl4A_6xH70Sd9';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Mirror SMRP ke Google Sheet (Apps Script web app) — null untuk matikan
+const SHEET_MIRROR_URL = 'https://script.google.com/macros/s/AKfycby2dfVMtGxozntsXwtXOjmPJdwiuvqIUeRa9Qd9GzCV0dtoUTU8dYoV7beCfRtHHedF/exec';
 
 const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
 const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"];
@@ -196,6 +198,17 @@ async function simpan(jenis){ // jenis = 'kpi' atau 'smrp'
     showMsg('✅ '+jenis.toUpperCase()+' '+fasiliti+' ('+BULAN[month-1]+' '+year+') berjaya dihantar!', true);
     [jenis+'N', jenis+'D'].forEach(id=>$(id).value='');
     updateRate(jenis);
+    // Mirror ke Google Sheet (SMRP sahaja) — fire & forget, tak ganggu aliran utama
+    if(jenis === 'smrp' && typeof SHEET_MIRROR_URL === 'string' && SHEET_MIRROR_URL){
+      try {
+        await fetch(SHEET_MIRROR_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {'Content-Type': 'text/plain;charset=utf-8'},
+          body: JSON.stringify({ hospital: fasiliti, month, year, n: data.smrp.smrp1.numerator, d: data.smrp.smrp1.denominator })
+        });
+      } catch(mErr){ console.warn('Mirror sheet gagal (data utama selamat):', mErr); }
+    }
   } catch(e){
     showMsg('❌ Gagal simpan: '+e.message, false);
   } finally {
