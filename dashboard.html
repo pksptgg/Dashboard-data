@@ -157,17 +157,19 @@ const SUPABASE_URL = 'https://qclmomhiusxnushtegac.supabase.co';
 const SUPABASE_KEY = 'sb_publishable__6aMvgPPzo6ds2ucSuMl4A_6xH70Sd9';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
-const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"];
+const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut","Pejabat Kesihatan Kuala Terengganu","Pejabat Kesihatan Setiu"];
+const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang","KK Manir","KK Chendering","KK Hiliran","KK Rhu Sepuloh"];
 // Struktur SMRP: PKD tiada data sendiri — TOTAL PKD = jumlah KK bawahnya. PKD hanya KPI.
-const PKD = ["Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
+const PKD = ["Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut","Pejabat Kesihatan Kuala Terengganu","Pejabat Kesihatan Setiu"];
 const KK_GROUPS = {
   "Pejabat Kesihatan Hulu Terengganu": ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang"],
-  "Pejabat Kesihatan Daerah Besut": ["KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"]
+  "Pejabat Kesihatan Daerah Besut": ["KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"],
+  "Pejabat Kesihatan Kuala Terengganu": ["KK Manir","KK Chendering","KK Hiliran"],
+  "Pejabat Kesihatan Setiu": ["KK Rhu Sepuloh"]
 };
 const HOSPITALS_ONLY = HOSPITALS.filter(h=>!PKD.includes(h));          // 6 hospital (SMRP + KPI)
-const FAS_SMRP = [...HOSPITALS_ONLY, ...KK];                            // 19 fasiliti SMRP
-const FAS_KPI  = HOSPITALS;                                             // 8 (6 hospital + 2 PKD)
+const FAS_SMRP = [...HOSPITALS_ONLY, ...KK];                            // 23 fasiliti SMRP (6 hospital + 17 KK)
+const FAS_KPI  = HOSPITALS;                                             // 10 (6 hospital +4 PKD)
 function fasList(kat, isKPI){
   if(isKPI) return kat==='kk' ? [] : (kat==='hospital' ? HOSPITALS : FAS_KPI);
   return kat==='kk' ? KK : kat==='hospital' ? HOSPITALS_ONLY : FAS_SMRP;

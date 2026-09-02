@@ -115,10 +115,10 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // Mirror SMRP ke Google Sheet (Apps Script web app) — null untuk matikan
 const SHEET_MIRROR_URL = 'https://script.google.com/macros/s/AKfycby2dfVMtGxozntsXwtXOjmPJdwiuvqIUeRa9Qd9GzCV0dtoUTU8dYoV7beCfRtHHedF/exec';
 
-const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
-const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang"];
+const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut","Pejabat Kesihatan Kuala Terengganu","Pejabat Kesihatan Setiu"];
+const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang","KK Manir","KK Chendering","KK Hiliran","KK Rhu Sepuloh"];
 // PKD (Pejabat Kesihatan) = KPI sahaja, tiada SMRP. Setiap KK di-tag ke PKD dia.
-const PKD = ["Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut"];
+const PKD = ["Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut","Pejabat Kesihatan Kuala Terengganu","Pejabat Kesihatan Setiu"];
 const KK_TO_PKD = {
   "KK Kuala Berang":"Pejabat Kesihatan Hulu Terengganu","KK Ajil":"Pejabat Kesihatan Hulu Terengganu",
   "KK Kuala Telemong":"Pejabat Kesihatan Hulu Terengganu","KK Tengkawang":"Pejabat Kesihatan Hulu Terengganu",
@@ -126,7 +126,9 @@ const KK_TO_PKD = {
   "KK Jabi":"Pejabat Kesihatan Daerah Besut","KK Jerteh":"Pejabat Kesihatan Daerah Besut",
   "KK Kota Putera Besut":"Pejabat Kesihatan Daerah Besut","KK Kuala Besut":"Pejabat Kesihatan Daerah Besut",
   "KK Pasir Akar":"Pejabat Kesihatan Daerah Besut","KK Pulau Perhentian":"Pejabat Kesihatan Daerah Besut",
-  "KK Padang Luas":"Pejabat Kesihatan Daerah Besut","KK Seri Medang":"Pejabat Kesihatan Daerah Besut"
+  "KK Padang Luas":"Pejabat Kesihatan Daerah Besut","KK Seri Medang":"Pejabat Kesihatan Daerah Besut",
+  "KK Manir":"Pejabat Kesihatan Kuala Terengganu","KK Chendering":"Pejabat Kesihatan Kuala Terengganu","KK Hiliran":"Pejabat Kesihatan Kuala Terengganu",
+  "KK Rhu Sepuloh":"Pejabat Kesihatan Setiu"
 };
 const BULAN = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
 
