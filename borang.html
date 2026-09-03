@@ -116,7 +116,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const SHEET_MIRROR_URL = 'https://script.google.com/macros/s/AKfycby2dfVMtGxozntsXwtXOjmPJdwiuvqIUeRa9Qd9GzCV0dtoUTU8dYoV7beCfRtHHedF/exec';
 
 const HOSPITALS = ["Hospital Sultanah Nur Zahirah (HSNZ)","Hospital Dungun","Hospital Kemaman","Hospital Besut","Hospital Hulu Terengganu","Hospital Setiu","Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut","Pejabat Kesihatan Kuala Terengganu","Pejabat Kesihatan Setiu"];
-const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang","KK Manir","KK Chendering","KK Hiliran","KK Rhu Sepuloh"];
+const KK = ["KK Kuala Berang","KK Ajil","KK Kuala Telemong","KK Tengkawang","KK Felda Mengkawang","KK Jabi","KK Jerteh","KK Kota Putera Besut","KK Kuala Besut","KK Pasir Akar","KK Pulau Perhentian","KK Padang Luas","KK Seri Medang","KK Manir","KK Chendering","KK Hiliran","KK Rhu Sepuloh","KK Sungai Tong","KK Sri Langkap","KK Kampung Rahmat","KK Bandar Permaisuri"];
 // PKD (Pejabat Kesihatan) = KPI sahaja, tiada SMRP. Setiap KK di-tag ke PKD dia.
 const PKD = ["Pejabat Kesihatan Hulu Terengganu","Pejabat Kesihatan Daerah Besut","Pejabat Kesihatan Kuala Terengganu","Pejabat Kesihatan Setiu"];
 const KK_TO_PKD = {
@@ -128,7 +128,9 @@ const KK_TO_PKD = {
   "KK Pasir Akar":"Pejabat Kesihatan Daerah Besut","KK Pulau Perhentian":"Pejabat Kesihatan Daerah Besut",
   "KK Padang Luas":"Pejabat Kesihatan Daerah Besut","KK Seri Medang":"Pejabat Kesihatan Daerah Besut",
   "KK Manir":"Pejabat Kesihatan Kuala Terengganu","KK Chendering":"Pejabat Kesihatan Kuala Terengganu","KK Hiliran":"Pejabat Kesihatan Kuala Terengganu",
-  "KK Rhu Sepuloh":"Pejabat Kesihatan Setiu"
+  "KK Rhu Sepuloh":"Pejabat Kesihatan Setiu",
+  "KK Sungai Tong":"Pejabat Kesihatan Setiu","KK Sri Langkap":"Pejabat Kesihatan Setiu",
+  "KK Kampung Rahmat":"Pejabat Kesihatan Setiu","KK Bandar Permaisuri":"Pejabat Kesihatan Setiu"
 };
 const BULAN = ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'];
 
