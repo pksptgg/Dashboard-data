@@ -150,7 +150,7 @@
     </section>
   </main>
 
-  <footer>© 2026 PKSP Negeri Terengganu — Dibina untuk kegunaan dalaman.</footer>
+  <footer>© 2026 PKSP Negeri Terengganu — Dibina untuk kegunaan dalaman. · v1.1</footer>
 
 <script>
 const SUPABASE_URL = 'https://qclmomhiusxnushtegac.supabase.co';
@@ -219,26 +219,41 @@ function filtered(){
 function metricValue(){ return $('fMetric').value; }
 
 function renderStats(){
-  $('stTotal').textContent = allData.length;
-  $('stFas').textContent = new Set(allData.map(d=>d.hospital)).size + ' / ' + (HOSPITALS.length+KK.length);
-  $('stBulan').textContent = new Set(allData.map(mkey)).size;
-  const last = allData.map(d=>d.submitted_at||'').sort().pop();
+  const isKPI = metricValue().startsWith('kpi');
+  const relevan = fasList($('fKat').value, isKPI);            // fasiliti yang sepatutnya hantar metrik ini
+  const sah = e => adaData(e);                                 // 0/0 tidak dikira hantar
+  const hantar = new Set(allData.filter(d=>relevan.includes(d.hospital) && sah(getEntry(d, metricValue()))).map(d=>d.hospital));
+  const rekod = allData.filter(d=>relevan.includes(d.hospital) && sah(getEntry(d, metricValue())));
+  $('stTotal').textContent = rekod.length;                     // penghantaran sah (fasiliti × bulan), 0/0 dikecualikan
+  $('stFas').textContent = hantar.size + ' / ' + relevan.length;
+  // bulan diliputi = bulan yang ada sekurang-kurangnya satu penghantaran sah untuk metrik aktif
+  const bulanSah = new Set(rekod.map(mkey));
+  $('stBulan').textContent = bulanSah.size;
+  const last = rekod.map(d=>d.submitted_at||'').sort().pop();
   $('stKemaskini').textContent = last ? new Date(last).toLocaleDateString('ms-MY',{day:'2-digit',month:'short'}) : '–';
 }
 
 function renderPending(){
   let pool = allData;
-  const yr = $('fYear').value;
+  const yr = $('fYear').value, mo = $('fMonth').value;
   if(yr) pool = pool.filter(d=>String(d.year)===yr);
   if(!pool.length){ $('pendingCard').style.display='none'; return; }
-  const latest = Math.max(...pool.map(mkey));
-  const y=Math.floor(latest/100), m=latest%100;
+  // Bulan rujukan: ikut penapis Bulan kalau ada; kalau tidak, bulan terkini yang ada data.
+  let y, m;
+  if(mo){
+    m = parseInt(mo);
+    y = yr ? parseInt(yr) : Math.max(...pool.map(d=>d.year));
+  } else {
+    const latest = Math.max(...pool.map(mkey));
+    y = Math.floor(latest/100); m = latest%100;
+  }
   const kat = $('fKat').value;
   const isKPI = metricValue().startsWith('kpi');
   const fas = fasList(kat, isKPI);
-  const submitted = new Set(pool.filter(d=>mkey(d)===latest && adaData(getEntry(d, metricValue()))).map(d=>d.hospital));
+  const submitted = new Set(pool.filter(d=>d.year===y && d.month===m && adaData(getEntry(d, metricValue()))).map(d=>d.hospital));
   const pending = fas.filter(f=>!submitted.has(f));
-  $('pendingLabel').textContent = BULAN_PENUH[m-1]+' '+y;
+  const adaRekod = pool.some(d=>d.year===y && d.month===m && getEntry(d, metricValue()));
+  $('pendingLabel').textContent = BULAN_PENUH[m-1]+' '+y + (adaRekod ? '' : ' (belum ada rekod)');
   $('pendingList').innerHTML = pending.length
     ? pending.map(p=>`<span class="badge badge-bad">${p}</span>`).join('')
     : '<span class="badge badge-good">✔ Semua fasiliti telah menghantar</span>';
@@ -259,13 +274,13 @@ function renderTrend(){
     borderColor:COLORS[i%COLORS.length], backgroundColor:COLORS[i%COLORS.length]+'33',
     borderWidth:2, tension:.3, spanGaps:true, pointRadius:3
   }));
-  datasets.push({label:'Sasaran ('+TARGET_KPI+'%)',data:keys.map(()=>TARGET_KPI),borderColor:'#f59e0b',borderDash:[6,4],pointRadius:0});
+  if(mv.startsWith('kpi')) datasets.push({label:'Sasaran ('+TARGET_KPI+'%)',data:keys.map(()=>TARGET_KPI),borderColor:'#f59e0b',borderDash:[6,4],pointRadius:0});
   // Y-axis adaptif: mula dekat nilai terendah supaya kelok/pembetulan nampak (bukan sentiasa 0)
   const vals = datasets.flatMap(d=>d.data).filter(v=>v!==null&&v!==undefined&&!isNaN(v));
   const lo = vals.length ? Math.min(...vals) : 0;
-  const hi = vals.length ? Math.max(...vals, TARGET_KPI) : 105;
+  const hi = vals.length ? Math.max(...vals, mv.startsWith('kpi')?TARGET_KPI:0) : 105;
   const ymin = Math.max(0, Math.floor(lo-5));
-  const ymax = Math.min(105, Math.ceil(hi+2));
+  const ymax = Math.max(Math.ceil(hi+2), 105);   // jangan potong nilai luar biasa (cth. rate >100%)
   if(chTrend) chTrend.destroy();
   chTrend = new Chart($('chTrend'),{type:'line',data:{labels:keys.map(k=>BULAN[k%100-1]+' '+String(Math.floor(k/100)).slice(2)),datasets},
     options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:ymin,max:ymax}}}});
@@ -290,7 +305,7 @@ function renderBar(){
   recs.forEach(r=>{
     const v=rate(getEntry(r,mv));
     labels.push(r.hospital); values.push(v);
-    colors.push(v===null?'#cbd5e1':(mv.startsWith('kpi') ? (v>=98?'#16a34a':v>=93?'#d97706':'#dc2626') : '#2563eb'));
+    colors.push(v===null?'#cbd5e1':(mv.startsWith('kpi') ? (v>=TARGET_KPI?'#16a34a':v>=TARGET_KPI-5?'#d97706':'#dc2626') : '#2563eb'));
   });
   if(chBar) chBar.destroy();
   chBar = new Chart($('chBar'),{type:'bar',data:{labels,datasets:[{label:getMetricLabel(mv),data:values,backgroundColor:colors,borderRadius:6}]},
@@ -323,12 +338,14 @@ function renderTable(){
   const fmt = e=>{
     if(!e) return '–';
     const r = rate(e);
-    return (e.numerator??'–')+' / '+(e.denominator??'–')+' / '+(r===null?'–':r.toFixed(2)+'%');
+    // Tanda amaran: N melebihi D (rate >100%) — bukan mustahil, tapi patut disemak
+    const warn = (r!==null && r>100) ? ' <span title="N lebih besar daripada D — semak semula" style="color:#b91c1c">⚠</span>' : '';
+    return (e.numerator??'–')+' / '+(e.denominator??'–')+' / '+(r===null?'–':r.toFixed(2)+'%')+warn;
   };
   // Warna ikut metrik: KPI hijau (sasaran), SMRP biru (ada data sahaja)
   const clsK = e=>{
     const r = rate(e); if(r===null) return '';
-    return r>=98?'rate-good':r>=93?'rate-warn':'rate-bad';
+    return r>=TARGET_KPI?'rate-good':r>=TARGET_KPI-5?'rate-warn':'rate-bad';
   };
   const clsS = e=> adaData(e) ? 'rate-smrp' : '';
   $('tbody').innerHTML = rows.length ? rows.map(d=>{
@@ -374,7 +391,7 @@ function renderNegeri(){
       if(isNaN(n)||isNaN(d)) return;
       totN+=n; totD+=d; recCount++;
     });
-    fasAda = new Set(pool.filter(d=>months.includes(d.month) && getEntry(d,mv)).map(d=>d.hospital)).size;
+    fasAda = new Set(pool.filter(d=>months.includes(d.month) && adaData(getEntry(d,mv))).map(d=>d.hospital)).size;
     return {totN, totD, fasAda, recCount};
   }
   function papar(prefix, k, label){

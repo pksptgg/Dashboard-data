@@ -106,7 +106,7 @@
     </div>
   </main>
 
-  <footer>© 2026 PKSP Negeri Terengganu</footer>
+  <footer>© 2026 PKSP Negeri Terengganu · v1.1</footer>
 
 <script>
 const SUPABASE_URL = 'https://qclmomhiusxnushtegac.supabase.co';
@@ -155,7 +155,9 @@ function kemaskiniBox(){
 function rate(n,d){ n=parseFloat(n); d=parseFloat(d); if(isNaN(n)||isNaN(d)||d===0) return null; return (n/d*100); }
 function updateRate(prefix){
   const r = rate($(prefix+'N').value, $(prefix+'D').value);
-  $(prefix+'Rate').textContent = r===null ? '–' : r.toFixed(2)+'%';
+  const el = $(prefix+'Rate');
+  el.textContent = r===null ? '–' : r.toFixed(2)+'%' + (r>100?' ⚠':'');
+  el.style.color = (r!==null && r>100) ? '#b91c1c' : '#166534';
 }
 function showMsg(text, ok){
   const m = $('msg'); m.textContent = text; m.className = ok?'ok':'err'; m.style.display='block';
@@ -181,6 +183,20 @@ async function simpan(jenis){ // jenis = 'kpi' atau 'smrp'
 
   const nVal = $(jenis+'N').value, dVal = $(jenis+'D').value;
   if(!nVal && !dVal) return showMsg('⚠️ Isi N dan/atau D bahagian '+jenis.toUpperCase()+' dahulu.', false);
+
+  // Semakan N > D (rate >100%). Bukan mustahil — contoh SMRP: kemasukan data boleh lebih
+  // daripada kedatangan pesakit kalau ada kemasukan tertunggak/berulang — jadi sahkan, jangan halang.
+  const nNum = parseFloat(nVal)||0, dNum = parseFloat(dVal)||0;
+  if(dNum>0 && nNum>dNum){
+    const r = (nNum/dNum*100).toFixed(2);
+    const ok = confirm(
+      '⚠️ Semak semula: N ('+nNum+') lebih besar daripada D ('+dNum+') → rate '+r+'%.\n\n'+
+      'SMRP: N = kemasukan data SMRP, D = kedatangan pesakit.\n'+
+      'KPI: N = tindakbalas ≤2 hari bekerja, D = jumlah rujukan.\n\n'+
+      'Teruskan hantar?'
+    );
+    if(!ok) return showMsg('Dibatalkan — sila semak N dan D sebelum hantar.', false);
+  }
 
   const data = {};
   data[jenis] = { [jenis+'1']: { numerator: parseFloat(nVal)||0, denominator: parseFloat(dVal)||0 } };
