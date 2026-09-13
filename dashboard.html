@@ -4,6 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — PKSP Negeri Terengganu</title>
+  <meta name="description" content="Prestasi KPI 1 dan SMRP bulanan semua hospital, pejabat kesihatan daerah dan klinik kesihatan Negeri Terengganu — graf trend, perbandingan fasiliti dan jadual data.">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Dashboard Data PKSP Negeri Terengganu">
+  <meta property="og:title" content="Dashboard KPI &amp; SMRP — PKSP Negeri Terengganu">
+  <meta property="og:description" content="Prestasi KPI 1 dan SMRP bulanan hospital, PKD dan klinik kesihatan Negeri Terengganu.">
+  <meta property="og:url" content="https://pksptgg.github.io/Dashboard-data/dashboard.html">
+  <meta property="og:image" content="https://pksptgg.github.io/Dashboard-data/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <script src="supabase.js"></script>
   <script src="chart.umd.min.js"></script>
   <script src="xlsx.full.min.js"></script>
@@ -150,7 +164,7 @@
     </section>
   </main>
 
-  <footer>© 2026 PKSP Negeri Terengganu — Dibina untuk kegunaan dalaman. · v1.1</footer>
+  <footer>© 2026 PKSP Negeri Terengganu — Dibina untuk kegunaan dalaman. · v1.2</footer>
 
 <script>
 const SUPABASE_URL = 'https://qclmomhiusxnushtegac.supabase.co';
@@ -461,22 +475,44 @@ function exportKPI(){
   wsDef['!cols'] = [{wch:60}];
   XLSX.utils.book_append_sheet(wb, wsDef, 'DEFINISI');
 
-  // 12 sheet bulan
-  HOSPITALS.forEach((h,i)=>{}); // (senarai hospital kekal ikut config)
-  for(let m=1; m<=12; m++){
-    const rows = [['No.','Hospital','Numerator (N)','Denominator (D)','RATE  (N / D) x 100%']];
-    let totN=0, totD=0;
-    HOSPITALS.forEach((h,i)=>{
-      const rec = allData.find(d=>d.hospital===h && d.year===year && d.month===m);
+  // 12 sheet bulan — setiap bulan: blok HOSPITAL (6) dan blok PKD (4) berasingan,
+  // kerana kedua-duanya lapisan pelaporan berbeza; JUMLAH BESAR NEGERI = gabungan.
+  function blokKpi(senarai, tajukBlok, bulan){
+    const out = [];
+    let totN=0, totD=0, adaIsi=false;
+    senarai.forEach((h,i)=>{
+      const rec = allData.find(d=>d.hospital===h && d.year===year && d.month===bulan);
       const e = rec?.kpi?.kpi1;
       const n = e ? parseInt(e.numerator)||0 : null;
-      const d = e ? parseInt(e.denominator)||0 : null;
-      if(n!==null){totN+=n;} if(d!==null){totD+=d;}
-      rows.push([i+1, h, n??'', d??'', rateCalc(e)??'']);
+      const dn = e ? parseInt(e.denominator)||0 : null;
+      if(n!==null){ totN+=n; }
+      if(dn!==null){ totD+=dn; }
+      if(e) adaIsi = true;
+      out.push([i+1, h, n??'', dn??'', rateCalc(e)??'']);
     });
-    rows.push(['','GRAND TOTAL', totN||'', totD||'', totD?Math.round(totN/totD*10000)/100:'']);
+    out.push(['', 'TOTAL '+tajukBlok, adaIsi?totN:'', adaIsi?totD:'', totD?Math.round(totN/totD*10000)/100:'']);
+    return {rows: out, totN, totD};
+  }
+  for(let m=1; m<=12; m++){
+    const rows = [];
+    rows.push(['MASA TINDAKBALAS AWAL RUJUKAN PESAKIT (≤2 HARI BEKERJA) — KPI 1']);
+    rows.push(['NEGERI : TERENGGANU', '', '', '', 'SASARAN ≥ '+TARGET_KPI+'%']);
+    rows.push([]);
+    rows.push(['No.','HOSPITAL','Numerator (N)','Denominator (D)','RATE  (N / D) x 100%']);
+    const hb = blokKpi(HOSPITALS_ONLY, 'HOSPITAL', m);
+    rows.push(...hb.rows);
+    rows.push([]);
+    rows.push(['No.','PEJABAT KESIHATAN DAERAH (PKD)','Numerator (N)','Denominator (D)','RATE  (N / D) x 100%']);
+    const pb = blokKpi(PKD, 'PKD', m);
+    rows.push(...pb.rows);
+    rows.push([]);
+    const gtN = hb.totN + pb.totN, gtD = hb.totD + pb.totD;
+    rows.push(['','JUMLAH BESAR NEGERI', gtN||'', gtD||'', gtD?Math.round(gtN/gtD*10000)/100:'']);
+    rows.push([]);
+    rows.push(['','Numerator (N)',': Jumlah pesakit yang diberi tindakbalas awal dalam tempoh 48 jam']);
+    rows.push(['','Denominator (D)',': Jumlah keseluruhan pesakit yang dirujuk']);
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{wch:6},{wch:38},{wch:14},{wch:16},{wch:20}];
+    ws['!cols'] = [{wch:6},{wch:42},{wch:14},{wch:16},{wch:20}];
     XLSX.utils.book_append_sheet(wb, ws, BULAN_EXPORT[m-1]);
   }
   saveWorkbook(wb, 'Laporan KPI 1 '+year+'.xlsx');
@@ -568,16 +604,45 @@ function exportSMRP(){
   saveWorkbook(wb, 'SMRP Jumlah Kemasukan Data '+year+'.xlsx');
 }
 
-async function init(){
-  buildFilters();
-  const { data, error } = await sb.from('submissions').select('*');
-  if(error){ document.body.insertAdjacentHTML('beforeend','<p style="color:red;text-align:center">Gagal muat data: '+error.message+'</p>'); return; }
-  // Supabase simpan kpi/smrp dalam column 'data' — flatten supaya sama macam format lama
-  allData = data.map(r => {
+// ---------- Ambil SEMUA rekod (pagination) ----------
+// PostgREST hadkan bilangan baris setiap permintaan (lalai 1000). Kalau rekod lebih dari itu,
+// data dipotong SENYAP -> jumlah N/D jadi salah. Jadi ambil berperingkat sampai habis.
+const PAGE_SIZE = 1000;
+async function fetchAllSubs(){
+  let semua = [], mula = 0;
+  for(;;){
+    const { data, error } = await sb.from('submissions').select('*')
+      .order('year',{ascending:true}).order('month',{ascending:true}).order('hospital',{ascending:true})
+      .range(mula, mula + PAGE_SIZE - 1);
+    if(error) throw error;
+    const batch = data || [];
+    if(!batch.length) break;                   // tiada lagi rekod → habis
+    semua = semua.concat(batch);
+    // Tambah ikut bilangan SEBENAR diterima, bukan PAGE_SIZE: kalau pelayan hadkan baris
+    // lebih rendah daripada yang diminta, kita takkan terlangkau rekod.
+    mula += batch.length;
+    if(mula > 100000) break;                   // jaring keselamatan
+  }
+  return semua;
+}
+// Supabase simpan kpi/smrp dalam column 'data' — flatten supaya sama macam format lama
+function flatten(rows){
+  return rows.map(r => {
     const d = r.data || {};
     return { ...r, kpi: d.kpi || {}, smrp: d.smrp || {} };
   });
-  [...new Set(data.map(d=>d.year))].sort().reverse().forEach(y=>{
+}
+
+async function init(){
+  buildFilters();
+  let rows;
+  try { rows = await fetchAllSubs(); }
+  catch(e){
+    document.body.insertAdjacentHTML('beforeend','<p style="color:red;text-align:center">Gagal muat data: '+e.message+'</p>');
+    return;
+  }
+  allData = flatten(rows);
+  [...new Set(rows.map(d=>d.year))].sort().reverse().forEach(y=>{
     $('fYear').insertAdjacentHTML('beforeend',`<option>${y}</option>`);
   });
   renderAll();
@@ -586,12 +651,8 @@ async function init(){
   // Realtime: bila orang lain isi borang, terus refresh
   sb.channel('submissions-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'submissions'}, async ()=>{
-      const { data } = await sb.from('submissions').select('*');
-      allData = data.map(r => {
-        const d = r.data || {};
-        return { ...r, kpi: d.kpi || {}, smrp: d.smrp || {} };
-      });
-      renderAll();
+      try { allData = flatten(await fetchAllSubs()); renderAll(); }
+      catch(e){ console.warn('Refresh realtime gagal:', e); }
     })
     .subscribe();
 }
