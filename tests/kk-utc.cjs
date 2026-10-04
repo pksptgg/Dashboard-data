@@ -1,0 +1,45 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const root = path.resolve(__dirname, '..');
+function load(file, stop) {
+  const html = fs.readFileSync(path.join(root, file), 'utf8');
+  const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
+  const elements = {};
+  const document = {getElementById(id) { return elements[id] ||= {value:'', innerHTML:'', textContent:'', style:{}}; }};
+  const context = vm.createContext({document, supabase:{createClient:()=>({})}, console, XLSX:require(path.join(root, 'xlsx.full.min.js'))});
+  vm.runInContext(script.slice(0, script.lastIndexOf(stop)), context);
+  return {run:code=>vm.runInContext(code, context), elements};
+}
+const form = load('borang.html', "$('kategori').addEventListener");
+assert.equal(form.run('KK.includes("KK UTC")'), true, 'Borang mesti menyenaraikan KK UTC');
+assert.equal(form.run('HOSPITALS.includes("KK UTC")'), false);
+assert.equal(form.run('KK_TO_PKD["KK UTC"]'), 'Pejabat Kesihatan Kuala Terengganu');
+form.run("$('kategori').value='kk'; populateFasiliti(); $('fasiliti').value='KK UTC'; kemaskiniBox();");
+assert.ok(form.elements.fasiliti.innerHTML.includes('<option>KK UTC</option>'));
+assert.equal(form.elements.kpiBox.style.display, 'none');
+assert.equal(form.elements.smrpBox.style.display, '');
+const dash = load('dashboard.html', 'init();');
+assert.equal(dash.run('fasList("kk", false).filter(f=>f==="KK UTC").length'), 1);
+assert.equal(dash.run('fasList("hospital", false).includes("KK UTC")'), false);
+assert.equal(dash.run('fasList("", true).includes("KK UTC")'), false);
+assert.equal(dash.run('KK_GROUPS["Pejabat Kesihatan Kuala Terengganu"].includes("KK UTC")'), true);
+assert.equal(dash.run('new Set(KK).size === KK.length'), true);
+assert.equal(dash.run('Object.values(KK_GROUPS).flat().length === KK.length'), true);
+dash.run("$('fMetric').value='smrp:smrp1'; $('fKat').value='kk'; populateFas();");
+assert.ok(dash.elements.fFas.innerHTML.includes('<option>KK UTC</option>'));
+// Synthetic test data only; no cloud writes or form submissions.
+dash.run(`allData = [{hospital:'KK UTC', kategori:'kk', year:2026, month:10, smrp:{smrp1:{numerator:7, denominator:10}}}];
+  $('fYear').value='2026'; saveWorkbook = wb => { globalThis.exported = XLSX.utils.sheet_to_json(wb.Sheets['2026'], {header:1}); }; exportSMRP();`);
+const rows = dash.run('exported');
+const clinicHeader = rows.findIndex(r=>r[0]==='FASILITI : KLINIK KESIHATAN');
+const utc = rows.findIndex(r=>r[1]==='KK UTC');
+assert.ok(utc > clinicHeader, 'KK UTC mesti di seksyen Klinik Kesihatan');
+assert.equal(rows.filter(r=>r[1]==='KK UTC').length, 1);
+assert.ok(rows.slice(clinicHeader, utc).some(r=>r[1]==='PEJABAT KESIHATAN KUALA TERENGGANU'));
+const october = 2 + 9*3;
+assert.deepEqual(Array.from(rows[utc].slice(october, october+3)), [7,10,70]);
+const total = rows.slice(utc+1).find(r=>r[1]==='TOTAL');
+assert.deepEqual(Array.from(total.slice(october, october+3)), [7,10,70]);
+console.log('PASS: KK UTC form, SMRP filters, KPI exclusion, PKD grouping, Excel export and computed totals.');
