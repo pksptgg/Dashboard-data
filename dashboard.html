@@ -62,6 +62,12 @@
     .row-kpi { background:#f0fdf4!important; }
     .row-smrp { background:#eff6ff!important; }
     footer { text-align:center; padding:24px; color:#94a3b8; font-size:13px; }
+    #adminPanel { background:#fff; border:2px solid #dc2626; border-radius:12px; padding:20px; margin-bottom:24px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+    #adminPanel h3 { margin-bottom:4px; } #adminPanel .warn { color:#b91c1c; font-size:13px; margin-bottom:12px; }
+    #adminList { overflow-x:auto; max-height:420px; }
+    #adminList table { min-width:760px; }
+    .btn-danger { background:#dc2626; color:#fff; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:600; font-size:13px; }
+    .btn-danger:hover { background:#b91c1c; }
   </style>
 </head>
 <body>
@@ -83,6 +89,14 @@
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
       <button class="btn-export" style="background:#16a34a;color:#fff;border:none;border-radius:10px;padding:11px 20px;font-weight:600;font-size:14px;cursor:pointer" onclick="exportKPI()">📗 Export KPI (Excel)</button>
       <button class="btn-export" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:11px 20px;font-weight:600;font-size:14px;cursor:pointer" onclick="exportSMRP()">📘 Export SMRP (Excel)</button>
+      <button class="btn-export" id="btnAdmin" style="background:#dc2626;color:#fff;border:none;border-radius:10px;padding:11px 20px;font-weight:600;font-size:14px;cursor:pointer" onclick="toggleAdmin()">🛡️ Admin</button>
+    </div>
+
+    <!-- Panel Admin: hapus rekod yang PKSP tersilap hantar -->
+    <div id="adminPanel" style="display:none">
+      <h3>🛡️ Panel Admin — Hapus Rekod Salah</h3>
+      <p class="warn">⚠️ Guna penapis di bawah untuk sempitkan senarai. Klik "Padam" pada baris yang salah. Tindakan ini <b>TERUS buang data dari cloud dan TIADA UNDO</b>.</p>
+      <div id="adminList"></div>
     </div>
 
     <div class="stats">
@@ -440,7 +454,7 @@ function renderNegeri(){
   card.style.display='block';
 }
 
-function renderAll(){ populateFas(); renderStats(); renderPending(); renderNegeri(); renderTrend(); renderBar(); renderCompare(); renderTable(); }
+function renderAll(){ populateFas(); renderStats(); renderPending(); renderNegeri(); renderTrend(); renderBar(); renderCompare(); renderTable(); renderAdmin(); }
 
 // ---------- Export Excel (format sama macam versi lokal) ----------
 const BULAN_EXPORT = ['JANUARI','FEBRUARI','MAC','APRIL','MEI','JUN','JUL','OGOS','SEPT','OKT','NOV','DIS'];
@@ -631,6 +645,53 @@ function flatten(rows){
     const d = r.data || {};
     return { ...r, kpi: d.kpi || {}, smrp: d.smrp || {} };
   });
+}
+
+// ---------- Panel Admin: hapus rekod yang PKSP tersalah masuk ----------
+// ⚠️ Kata laluan ini klien-side sahaja (bukan keselamatan sebenar — sesiapa yang baca
+// sumber halaman boleh nampak). Ia cukup untuk halang klik tersilap / orang awam,
+// tapi bukan pelindung keras. Kalau nak keselamatan betul, kena guna Supabase Edge
+// Function dengan secret di server — tanya hafiz kalau nak.
+const ADMIN_PASS = 'PKSP-admin-2026';   // ← TUKAR ikut suka (line ini)
+let adminVisible = false, adminAuthed = false;
+
+function toggleAdmin(){
+  if(!adminAuthed){
+    const masuk = prompt('Masukkan kata laluan Admin (untuk hapus data):');
+    if(masuk !== ADMIN_PASS){ alert('Kata laluan salah.'); return; }
+    adminAuthed = true;
+  }
+  adminVisible = !adminVisible;
+  $('btnAdmin').textContent = adminVisible ? '🛡️ Tutup Admin' : '🛡️ Admin';
+  $('adminPanel').style.display = adminVisible ? 'block' : 'none';
+  if(adminVisible) renderAdmin();
+}
+
+function renderAdmin(){
+  if(!adminVisible) return;
+  const kat=$('fKat').value, mo=$('fMonth').value, yr=$('fYear').value, fas=$('fFas').value;
+  const list = allData
+    .filter(d=> (!kat || d.kategori===kat) && (!mo || String(d.month)===mo) &&
+                (!yr || String(d.year)===yr) && (!fas || d.hospital===fas))
+    .sort((a,b)=> mkey(b)-mkey(a) || a.hospital.localeCompare(b.hospital));
+  if(!list.length){ $('adminList').innerHTML = '<p style="color:#94a3b8;padding:12px">Tiada rekod padan.</p>'; return; }
+  $('adminList').innerHTML =
+    '<table><thead><tr><th>Bulan</th><th>Fasiliti</th><th>Kategori</th><th>Dihantar pada</th><th></th></tr></thead><tbody>' +
+    list.map(r=>{
+      const label = BULAN_PENUH[r.month-1]+' '+r.year+' — '+r.hospital;
+      return `<tr><td>${BULAN_PENUH[r.month-1]} ${r.year}</td><td>${r.hospital}</td><td>${r.kategori==='kk'?'Klinik Kesihatan':'Hospital'}</td>`+
+        `<td>${r.submitted_at?new Date(r.submitted_at).toLocaleString('ms-MY'):'–'}</td>`+
+        `<td><button class="btn-danger" onclick='deleteRec(${r.id}, ${JSON.stringify(label)})'>🗑️ Padam</button></td></tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+async function deleteRec(id, label){
+  if(!confirm('BUANG REKOD INI?\n\n'+label+'\n\nTindakan ini TERUS dipadam dari cloud dan TAK BOLEH UNDO.\nTeruskan?')) return;
+  const { error } = await sb.from('submissions').delete().eq('id', id);
+  if(error){ alert('Gagal padam: '+error.message); return; }
+  allData = flatten(await fetchAllSubs());
+  renderAll();
+  alert('✔ Rekod dipadam: '+label);
 }
 
 async function init(){
