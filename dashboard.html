@@ -221,8 +221,9 @@ function getEntry(rec, metric){
   const [type,id] = metric.split(':');
   return rec[type] ? rec[type][id] : null;
 }
-// Ada data sebenar = denominator > 0. Rekod 0/0 (dari template Excel) dikira BELUM hantar.
-function adaData(e){ if(!e) return false; const d = parseFloat(e.denominator); return !isNaN(d) && d>0; }
+// Ada rekod = entry wujud (PKSP dah hantar, walaupun 0 pesakit → 0/0).
+// Tiada rekod = belum hantar langsung. 0/0 TETAP dikira hantar.
+function adaData(e){ return !!e; }
 
 function buildFilters(){
   $('fMonth').innerHTML = '<option value="">Semua</option>' + BULAN_PENUH.map((b,i)=>`<option value="${i+1}">${b}</option>`).join('');
