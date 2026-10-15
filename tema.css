@@ -1,0 +1,100 @@
+/* ==========================================================================
+   PKSP Negeri Terengganu — token tema (cerah / gelap)
+   Satu sumber kebenaran untuk warna. Halaman guna var(--...) sahaja.
+   Toggle: butang .tema-btn (lihat tema.js). Tema disimpan dalam localStorage.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  --bg:            #f1f5f9;
+  --card:          #ffffff;
+  --teks:          #0f172a;
+  --teks-lembut:   #334155;
+  --teks-muted:    #64748b;
+  --teks-muted2:   #94a3b8;
+
+  --border:        #e2e8f0;
+  --garis:         #f1f5f9;   /* garis pemisah baris jadual */
+  --head:          #f1f5f9;   /* latar kepala jadual */
+  --hover:         #f8fafc;
+
+  --topbar:        #0f172a;
+  --topbar-teks:   #ffffff;
+  --nav-teks:      #cbd5e1;
+  --nav-hover:     rgba(255, 255, 255, .08);
+
+  --biru:          #2563eb;
+  --emas:          #d97706;
+
+  --input-bg:      #ffffff;
+  --input-border:  #cbd5e1;
+
+  --good-bg:       #dcfce7;  --good-teks:  #166534;
+  --warn-bg:       #fef9c3;  --warn-teks:  #854d0e;
+  --bad-bg:        #fee2e2;  --bad-teks:   #991b1b;
+  --smrp-bg:       #dbeafe;  --smrp-teks:  #1d4ed8;
+  --row-kpi:       #f0fdf4;
+  --row-smrp:      #eff6ff;
+
+  --shadow:        0 1px 4px rgba(0, 0, 0, .08);
+}
+
+[data-tema="gelap"] {
+  color-scheme: dark;
+
+  --bg:            #0b1220;
+  --card:          #131c2e;
+  --teks:          #e6edf6;
+  --teks-lembut:   #cbd5e1;
+  --teks-muted:    #94a3b8;
+  --teks-muted2:   #7d8ca3;
+
+  --border:        #25324a;
+  --garis:         #1e293b;
+  --head:          #1a2437;
+  --hover:         #172033;
+
+  --topbar:        #070d18;
+  --topbar-teks:   #e6edf6;
+  --nav-teks:      #94a3b8;
+  --nav-hover:     rgba(255, 255, 255, .10);
+
+  --biru:          #60a5fa;
+  --emas:          #fbbf24;
+
+  --input-bg:      #0f1829;
+  --input-border:  #33415a;
+
+  --good-bg:       #06301c;  --good-teks:  #6ee7b7;
+  --warn-bg:       #3a2c05;  --warn-teks:  #fcd34d;
+  --bad-bg:        #3b1111;  --bad-teks:   #fca5a5;
+  --smrp-bg:       #0d2544;  --smrp-teks:  #93c5fd;
+  --row-kpi:       #0a2418;
+  --row-smrp:      #0c2137;
+
+  --shadow:        0 2px 10px rgba(0, 0, 0, .45);
+}
+
+/* Butang tukar tema (dalam topbar) */
+.tema-btn {
+  background: transparent;
+  border: 1.5px solid var(--nav-hover);
+  color: var(--topbar-teks);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.tema-btn:hover { background: var(--nav-hover); border-color: var(--nav-teks); }
+.tema-btn:focus-visible { outline: 2px solid var(--biru); outline-offset: 2px; }
+
+/* Peralihan lembut masa tukar tema (dilangkau kalau pengguna minta kurang gerakan) */
+@media (prefers-reduced-motion: no-preference) {
+  body, .card, .stat, .chart-card, .table-card, .filters, .pending, #adminPanel,
+  #kesCard, #negeriCard, th, td, select, input { transition: background-color .18s, color .18s, border-color .18s; }
+}

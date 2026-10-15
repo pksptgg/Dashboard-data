@@ -41,16 +41,16 @@ dash.run('renderKesNegeri();');
 assert.equal(disp('kesCard'), 'block', 'kad patut dipapar bila ada data KPI');
 assert.equal(el('kesBulanLabel'), 'Bulan September 2026');
 assert.equal(el('kesBulanJumlah'), '320', 'jumlah D negeri = 200 + 100 + 20 (SMRP tidak dikira)');
-assert.equal(el('kesBulanDetail'), 'Hospital 300 + PKD 20 · 3/10 unit hantar · N=160');
 assert.equal(el('kesTahunLabel'), 'Setahun Jan–September 2026');
 assert.equal(el('kesTahunJumlah'), '323', 'setahun termasuk Ogos (D=3)');
-assert.ok(el('kesMetrik').includes('jumlah keseluruhan pesakit yang dirujuk'));
-assert.ok(el('kesMetrik').includes('6 hospital + 4 PKD'));
+// Baris definisi KPI, baris pecahan (detail) dan nota sumber dah DIBUANG: skrip tak boleh menyentuh mereka.
+assert.equal(dash.elements.kesMetrik, undefined, 'baris definisi KPI mesti tiada');
+assert.equal(dash.elements.kesBulanDetail, undefined, 'baris pecahan panel Bulan mesti tiada');
+assert.equal(dash.elements.kesTahunDetail, undefined, 'baris pecahan panel Setahun mesti tiada');
 
 // --- penapis Metrik = SMRP TIDAK boleh mengubah kad (sumber tunggal = KPI 1) ---
 dash.run("$('fMetric').value='smrp:smrp1'; renderKesNegeri();");
 assert.equal(el('kesBulanJumlah'), '320', 'kad kekal KPI 1 walau penapis Metrik = SMRP');
-assert.ok(el('kesMetrik').includes('KPI 1'));
 
 // --- penapis Kategori tidak menyempitkan jumlah negeri ---
 dash.run("$('fKat').value='kk'; renderKesNegeri();");

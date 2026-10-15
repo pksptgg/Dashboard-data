@@ -23,52 +23,54 @@
   <script src="xlsx.full.min.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Segoe UI',system-ui,sans-serif; background:#f1f5f9; color:#0f172a; line-height:1.6; }
-    .topbar { background:#0f172a; color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:50; }
-    .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color:#fff; }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--teks); line-height:1.6; }
+    .topbar { background:var(--topbar); color:var(--topbar-teks); padding:14px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; position:sticky; top:0; z-index:50; }
+    .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--topbar-teks); }
     .brand-badge { background:linear-gradient(135deg,#2563eb,#7c3aed); font-weight:800; font-size:14px; padding:6px 10px; border-radius:8px; }
     .brand strong { font-size:15px; display:block; line-height:1.2; }
-    .brand small { font-size:11px; color:#94a3b8; }
+    .brand small { font-size:11px; color:var(--teks-muted2); }
     .nav { display:flex; gap:4px; }
-    .nav a { color:#cbd5e1; text-decoration:none; padding:8px 14px; border-radius:8px; font-size:14px; }
-    .nav a:hover, .nav a.active { background:rgba(255,255,255,.08); color:#fff; }
+    .nav a { color:var(--nav-teks); text-decoration:none; padding:8px 14px; border-radius:8px; font-size:14px; }
+    .nav a:hover, .nav a.active { background:var(--nav-hover); color:var(--topbar-teks); }
     .container { max-width:1200px; margin:0 auto; padding:24px 20px; }
-    h1 { font-size:26px; } .sub { color:#64748b; margin-bottom:20px; }
+    h1 { font-size:26px; } .sub { color:var(--teks-muted); margin-bottom:20px; }
     .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px; }
-    .stat { background:#fff; border-radius:12px; padding:18px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-    .stat-num { font-size:28px; font-weight:800; display:block; color:#2563eb; }
-    .stat-label { font-size:13px; color:#64748b; }
-    .pending { background:#fff; border-radius:12px; padding:20px; margin-bottom:24px; box-shadow:0 1px 4px rgba(0,0,0,.08); display:none; }
+    .stat { background:var(--card); border-radius:12px; padding:18px; text-align:center; box-shadow:var(--shadow); }
+    .stat-num { font-size:28px; font-weight:800; display:block; color:var(--biru); }
+    .stat-label { font-size:13px; color:var(--teks-muted); }
+    .pending { background:var(--card); border-radius:12px; padding:20px; margin-bottom:24px; box-shadow:var(--shadow); display:none; }
     .badge { display:inline-block; padding:5px 12px; border-radius:999px; font-size:13px; margin:3px; }
-    .badge-bad { background:#fee2e2; color:#991b1b; } .badge-good { background:#dcfce7; color:#166534; }
-    .filters { background:#fff; border-radius:12px; padding:16px 20px; margin-bottom:24px; box-shadow:0 1px 4px rgba(0,0,0,.08); display:flex; gap:14px; flex-wrap:wrap; }
+    .badge-bad { background:var(--bad-bg); color:var(--bad-teks); } .badge-good { background:var(--good-bg); color:var(--good-teks); }
+    .filters { background:var(--card); border-radius:12px; padding:16px 20px; margin-bottom:24px; box-shadow:var(--shadow); display:flex; gap:14px; flex-wrap:wrap; }
     .field { flex:1; min-width:140px; }
     label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; }
-    select { width:100%; padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; }
+    select { width:100%; padding:8px 10px; border:1.5px solid var(--input-border); border-radius:8px; font-size:14px; background:var(--input-bg); color:var(--teks); }
     .charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:20px; margin-bottom:24px; }
     @media(max-width:900px){ .charts{grid-template-columns:1fr} }
-    .chart-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-    .chart-card h3 { margin-bottom:4px; } .muted { color:#94a3b8; font-size:13px; }
+    .chart-card { background:var(--card); border-radius:12px; padding:20px; box-shadow:var(--shadow); }
+    .chart-card h3 { margin-bottom:4px; } .muted { color:var(--teks-muted2); font-size:13px; }
     .chart-wrap { position:relative; height:320px; margin-top:12px; }
-    .table-card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.08); margin-bottom:24px; overflow-x:auto; }
+    .table-card { background:var(--card); border-radius:12px; padding:20px; box-shadow:var(--shadow); margin-bottom:24px; overflow-x:auto; }
     table { width:100%; border-collapse:collapse; font-size:14px; min-width:700px; }
-    th { text-align:left; padding:10px 12px; background:#f1f5f9; font-size:13px; white-space:nowrap; }
-    td { padding:9px 12px; border-bottom:1px solid #f1f5f9; }
-    tr:hover td { background:#f8fafc; }
-    .rate-good { background:#dcfce7!important; color:#166534; font-weight:600; }
-    .rate-warn { background:#fef9c3!important; color:#854d0e; font-weight:600; }
-    .rate-bad { background:#fee2e2!important; color:#991b1b; font-weight:600; }
-    .rate-smrp { background:#dbeafe!important; color:#1d4ed8; font-weight:600; }
-    .row-kpi { background:#f0fdf4!important; }
-    .row-smrp { background:#eff6ff!important; }
-    footer { text-align:center; padding:24px; color:#94a3b8; font-size:13px; }
-    #adminPanel { background:#fff; border:2px solid #dc2626; border-radius:12px; padding:20px; margin-bottom:24px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-    #adminPanel h3 { margin-bottom:4px; } #adminPanel .warn { color:#b91c1c; font-size:13px; margin-bottom:12px; }
+    th { text-align:left; padding:10px 12px; background:var(--head); color:var(--teks-lembut); font-size:13px; white-space:nowrap; }
+    td { padding:9px 12px; border-bottom:1px solid var(--garis); }
+    tr:hover td { background:var(--hover); }
+    .rate-good { background:var(--good-bg)!important; color:var(--good-teks); font-weight:600; }
+    .rate-warn { background:var(--warn-bg)!important; color:var(--warn-teks); font-weight:600; }
+    .rate-bad { background:var(--bad-bg)!important; color:var(--bad-teks); font-weight:600; }
+    .rate-smrp { background:var(--smrp-bg)!important; color:var(--smrp-teks); font-weight:600; }
+    .row-kpi { background:var(--row-kpi)!important; }
+    .row-smrp { background:var(--row-smrp)!important; }
+    footer { text-align:center; padding:24px; color:var(--teks-muted2); font-size:13px; }
+    #adminPanel { background:var(--card); border:2px solid #dc2626; border-radius:12px; padding:20px; margin-bottom:24px; box-shadow:var(--shadow); }
+    #adminPanel h3 { margin-bottom:4px; } #adminPanel .warn { color:var(--bad-teks); font-size:13px; margin-bottom:12px; }
     #adminList { overflow-x:auto; max-height:420px; }
     #adminList table { min-width:760px; }
     .btn-danger { background:#dc2626; color:#fff; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; font-weight:600; font-size:13px; }
     .btn-danger:hover { background:#b91c1c; }
   </style>
+  <link rel="stylesheet" href="tema.css">
+  <script src="tema.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -80,6 +82,7 @@
       <a href="index.html">Utama</a>
       <a href="borang.html">Isi Data</a>
       <a href="dashboard.html" class="active">Dashboard</a>
+      <button class="tema-btn" data-tema-butang type="button">🌙 Gelap</button>
     </nav>
   </header>
 
@@ -107,61 +110,57 @@
     </div>
 
     <!-- Jumlah Kes Negeri: jumlah D KPI 1 semua hospital + PKD -->
-    <div id="kesCard" style="background:#fff;border-radius:14px;padding:24px 28px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:6px solid #d97706">
-      <h3 style="font-size:16px;color:#64748b;font-weight:600">🧮 <span style="color:#0f172a">Jumlah Kes</span> — <span style="color:#d97706">Negeri Terengganu</span></h3>
-      <p style="font-size:13px;color:#94a3b8;margin-top:2px;margin-bottom:16px" id="kesMetrik"></p>
+    <div id="kesCard" style="background:var(--card);border-radius:14px;padding:24px 28px;margin-bottom:24px;box-shadow:var(--shadow);border-left:6px solid var(--emas)">
+      <h3 style="font-size:16px;color:var(--teks-muted);font-weight:600;margin-bottom:16px">🧮 <span style="color:var(--teks)">Jumlah Kes</span> — <span style="color:var(--emas)">Negeri Terengganu</span></h3>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
         <div>
-          <p style="font-size:13.5px;font-weight:700;color:#334155;margin-bottom:6px" id="kesBulanLabel"></p>
+          <p style="font-size:13.5px;font-weight:700;color:var(--teks-lembut);margin-bottom:6px" id="kesBulanLabel"></p>
           <div style="display:flex;align-items:baseline;gap:8px">
-            <span id="kesBulanJumlah" style="font-size:44px;font-weight:800;line-height:1;color:#d97706">–</span>
-            <span style="font-size:14px;font-weight:600;color:#64748b">kes</span>
+            <span id="kesBulanJumlah" style="font-size:44px;font-weight:800;line-height:1;color:var(--emas)">–</span>
+            <span style="font-size:14px;font-weight:600;color:var(--teks-muted)">kes</span>
           </div>
-          <p style="font-size:12px;color:#94a3b8;margin-top:8px" id="kesBulanDetail"></p>
         </div>
-        <div style="border-left:1px solid #e2e8f0;padding-left:20px">
-          <p style="font-size:13.5px;font-weight:700;color:#334155;margin-bottom:6px" id="kesTahunLabel"></p>
+        <div style="border-left:1px solid var(--border);padding-left:20px">
+          <p style="font-size:13.5px;font-weight:700;color:var(--teks-lembut);margin-bottom:6px" id="kesTahunLabel"></p>
           <div style="display:flex;align-items:baseline;gap:8px">
-            <span id="kesTahunJumlah" style="font-size:44px;font-weight:800;line-height:1;color:#d97706">–</span>
-            <span style="font-size:14px;font-weight:600;color:#64748b">kes</span>
+            <span id="kesTahunJumlah" style="font-size:44px;font-weight:800;line-height:1;color:var(--emas)">–</span>
+            <span style="font-size:14px;font-weight:600;color:var(--teks-muted)">kes</span>
           </div>
-          <p style="font-size:12px;color:#94a3b8;margin-top:8px" id="kesTahunDetail"></p>
         </div>
       </div>
-      <p style="font-size:12px;color:#cbd5e1;margin-top:12px">Sumber tunggal: nilai <b>D (Denominator) KPI 1</b> semua 10 unit pelapor negeri — 6 hospital + 4 PKD. Jumlah dikira dari pecahan sistem, bukan sel JUMLAH yang diisi manual. SMRP tidak dicampur (D SMRP = kedatangan pesakit, maksud berbeza). Ikut penapis Tahun &amp; Bulan.</p>
     </div>
 
     <!-- Pencapaian Negeri (#3): bulan semasa + setahun -->
-    <div id="negeriCard" style="background:#fff;border-radius:14px;padding:24px 28px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.08)">
-      <h3 style="font-size:16px;color:#64748b;font-weight:600">🏆 <span id="negTajuk"></span></h3>
-      <p style="font-size:13px;color:#94a3b8;margin-top:2px;margin-bottom:16px" id="negMetrik"></p>
+    <div id="negeriCard" style="background:var(--card);border-radius:14px;padding:24px 28px;margin-bottom:24px;box-shadow:var(--shadow)">
+      <h3 style="font-size:16px;color:var(--teks-muted);font-weight:600">🏆 <span id="negTajuk"></span></h3>
+      <p style="font-size:13px;color:var(--teks-muted2);margin-top:2px;margin-bottom:16px" id="negMetrik"></p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
         <!-- Panel Bulan -->
         <div>
-          <p style="font-size:13.5px;font-weight:700;color:#334155;margin-bottom:6px" id="negBulanLabel"></p>
+          <p style="font-size:13.5px;font-weight:700;color:var(--teks-lembut);margin-bottom:6px" id="negBulanLabel"></p>
           <div style="display:flex;align-items:baseline;gap:8px">
             <span id="negBulanRate" style="font-size:38px;font-weight:800;line-height:1">–</span>
             <span id="negBulanStatus" style="font-size:12.5px;font-weight:700"></span>
           </div>
-          <div style="background:#f1f5f9;border-radius:999px;height:14px;margin-top:10px;overflow:hidden">
+          <div style="background:var(--head);border-radius:999px;height:14px;margin-top:10px;overflow:hidden">
             <div id="negBulanBar" style="height:100%;width:0%;border-radius:999px;background:#16a34a;transition:width .6s"></div>
           </div>
-          <p style="font-size:12px;color:#94a3b8;margin-top:6px" id="negBulanDetail"></p>
+          <p style="font-size:12px;color:var(--teks-muted2);margin-top:6px" id="negBulanDetail"></p>
         </div>
         <!-- Panel Setahun -->
-        <div style="border-left:1px solid #e2e8f0;padding-left:20px">
-          <p style="font-size:13.5px;font-weight:700;color:#334155;margin-bottom:6px" id="negTahunLabel"></p>
+        <div style="border-left:1px solid var(--border);padding-left:20px">
+          <p style="font-size:13.5px;font-weight:700;color:var(--teks-lembut);margin-bottom:6px" id="negTahunLabel"></p>
           <div style="display:flex;align-items:baseline;gap:8px">
             <span id="negTahunRate" style="font-size:38px;font-weight:800;line-height:1">–</span>
             <span id="negTahunStatus" style="font-size:12.5px;font-weight:700"></span>
           </div>
-          <div style="background:#f1f5f9;border-radius:999px;height:14px;margin-top:10px;overflow:hidden">
+          <div style="background:var(--head);border-radius:999px;height:14px;margin-top:10px;overflow:hidden">
             <div id="negTahunBar" style="height:100%;width:0%;border-radius:999px;background:#16a34a;transition:width .6s"></div>
           </div>
-          <p style="font-size:12px;color:#94a3b8;margin-top:6px" id="negTahunDetail"></p>
+          <p style="font-size:12px;color:var(--teks-muted2);margin-top:6px" id="negTahunDetail"></p>
         </div>
       </div>
-      <p style="font-size:12px;color:#cbd5e1;margin-top:12px">Sasaran KPI: <span id="negSasaran"></span> · Rate negeri = jumlah semua N ÷ jumlah semua D × 100</p>
+      <p style="font-size:12px;color:var(--teks-muted2);margin-top:12px">Sasaran KPI: <span id="negSasaran"></span> · Rate negeri = jumlah semua N ÷ jumlah semua D × 100</p>
     </div>
 
     <div class="pending" id="pendingCard">
@@ -203,7 +202,7 @@
     </section>
   </main>
 
-  <footer>© 2026 PKSP Negeri Terengganu — Dibina untuk kegunaan dalaman. · v1.4</footer>
+  <footer>© 2026 PKSP Negeri Terengganu — Dibina untuk kegunaan dalaman. · v1.5</footer>
 
 <script>
 const SUPABASE_URL = 'https://qclmomhiusxnushtegac.supabase.co';
@@ -410,7 +409,7 @@ function renderTable(){
       `<td>${BULAN_PENUH[d.month-1]}</td><td>${d.year}</td>`+
       (isKK?'':`<td class="${clsK(k)}">${fmt(k)}</td>`)+
       `<td class="${clsS(s)}">${fmt(s)}</td></tr>`;
-  }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px">Tiada data.</td></tr>';
+  }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--teks-muted2);padding:20px">Tiada data.</td></tr>';
 }
 
 // ---------- Pencapaian Negeri (#3): bulan semasa + setahun ----------
@@ -493,34 +492,25 @@ function renderKesNegeri(){
   const mv = KES_METRIK;
   const lapA = HOSPITALS_ONLY, lapB = PKD;      // 6 hospital + 4 PKD = 10 unit pelapor KPI
   const facilities = [...lapA, ...lapB];
-  const namaA = 'Hospital', namaB = 'PKD';
-
-  $('kesMetrik').textContent = getMetricLabel(mv) + ' · D = jumlah keseluruhan pesakit yang dirujuk · ' +
-    lapA.length + ' hospital + ' + lapB.length + ' PKD';
 
   const yr = $('fYear').value || Math.max(...allData.map(d=>d.year));
   const pool = allData.filter(d => String(d.year)===String(yr) && facilities.includes(d.hospital));
   if(!pool.length){ card.style.display='none'; return; }
 
+  // Jumlah kes = jumlah nilai D sahaja (tiada pecahan lain dipaparkan)
   function kira(months){
-    let totD=0, totN=0, dA=0, dB=0;
-    const fasAda = new Set();
+    let totD = 0;
     pool.filter(d=>months.includes(d.month)).forEach(r=>{
       const e = getEntry(r, mv); if(!adaData(e)) return;
-      const n=parseFloat(e.numerator), d=parseFloat(e.denominator);
-      if(isNaN(n)||isNaN(d)) return;
-      totN+=n; totD+=d; fasAda.add(r.hospital);
-      if(lapA.includes(r.hospital)) dA+=d; else if(lapB.includes(r.hospital)) dB+=d;
+      const d = parseFloat(e.denominator);
+      if(isNaN(d)) return;
+      totD += d;
     });
-    return {totD, totN, dA, dB, fas:fasAda.size};
+    return {totD};
   }
   function papar(prefix, k, label){
     $('kes'+prefix+'Label').textContent = label;
     $('kes'+prefix+'Jumlah').textContent = k.totD ? k.totD.toLocaleString() : '0';
-    $('kes'+prefix+'Detail').textContent = k.totD
-      ? namaA+' '+k.dA.toLocaleString()+' + '+namaB+' '+k.dB.toLocaleString()+
-        ' · '+k.fas+'/'+facilities.length+' unit hantar · N='+k.totN.toLocaleString()
-      : 'tiada rekod';
   }
 
   // Panel Bulan: ikut penapis Bulan kalau ada; kalau tidak, bulan terkini yang ada data
@@ -533,7 +523,7 @@ function renderKesNegeri(){
   card.style.display='block';
 }
 
-function renderAll(){ populateFas(); renderStats(); renderPending(); renderKesNegeri(); renderNegeri(); renderTrend(); renderBar(); renderCompare(); renderTable(); renderAdmin(); }
+function renderAll(){ if(typeof terapkanWarnaChart==='function') terapkanWarnaChart(); populateFas(); renderStats(); renderPending(); renderKesNegeri(); renderNegeri(); renderTrend(); renderBar(); renderCompare(); renderTable(); renderAdmin(); }
 
 // ---------- Export Excel (format sama macam versi lokal) ----------
 const BULAN_EXPORT = ['JANUARI','FEBRUARI','MAC','APRIL','MEI','JUN','JUL','OGOS','SEPT','OKT','NOV','DIS'];
@@ -753,7 +743,7 @@ function renderAdmin(){
     .filter(d=> (!kat || d.kategori===kat) && (!mo || String(d.month)===mo) &&
                 (!yr || String(d.year)===yr) && (!fas || d.hospital===fas))
     .sort((a,b)=> mkey(b)-mkey(a) || a.hospital.localeCompare(b.hospital));
-  if(!list.length){ $('adminList').innerHTML = '<p style="color:#94a3b8;padding:12px">Tiada rekod padan.</p>'; return; }
+  if(!list.length){ $('adminList').innerHTML = '<p style="color:var(--teks-muted2);padding:12px">Tiada rekod padan.</p>'; return; }
   $('adminList').innerHTML =
     '<table><thead><tr><th>Bulan</th><th>Fasiliti</th><th>Kategori</th><th>Dihantar pada</th><th></th></tr></thead><tbody>' +
     list.map(r=>{
